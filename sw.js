@@ -1,5 +1,5 @@
-/* DONIA SMART CORE v3.0 - SW disabled for reliability */
-self.addEventListener('install', function() { self.skipWaiting(); });
+/* DONIA SMART CORE v3.0 */
+self.addEventListener('install', function(e) { self.skipWaiting(); });
 self.addEventListener('activate', function(e) {
   e.waitUntil(
     caches.keys().then(function(k) {
@@ -7,4 +7,3 @@ self.addEventListener('activate', function(e) {
     }).then(function() { return self.clients.claim(); })
   );
 });
-// No fetch handler = network-first, always fresh
