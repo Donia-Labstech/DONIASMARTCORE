@@ -320,7 +320,7 @@ tr:hover td{background:#f8faff;}
         <div class="lic-plan-sub" style="color:rgba(255,255,255,.6);font-size:11px;margin-top:4px">غير محدود</div>
       </div>
     </div>
-    <input class="lic-input" id="licKeyInput" placeholder="DSC-XXXXXXXX-XXXXXXXX-XXXXXXXX" style="font-size:11px;letter-spacing:.5px">
+    <input class="lic-input" id="licKeyInput" placeholder="DSC-E-2027-DONIA" style="font-size:13px;letter-spacing:1px;font-family:monospace">
     <div id="licError"></div>
     <button class="lic-btn" onclick="activateLicense()" style="margin-top:12px">🔑 تفعيل الترخيص</button>
     <div class="lic-trial" onclick="activateTrial()">🎁 ابدأ النسخة التجريبية مجاناً (30 يوم)</div>
@@ -461,121 +461,114 @@ tr:hover td{background:#f8faff;}
 
 <script>
 // ══════════════════════════════════════════════════
-//   LICENSE SYSTEM v2.1.1 — COMPACT KEY FORMAT
-//   Key: DSC-[base64("P|EXPIRY|MAX|SIG")]
-//   Max length: ~40 chars — works everywhere
+//   LICENSE SYSTEM v3 — SIMPLE READABLE KEYS
+//   Format: DSC-PLAN-YEAR-CODE
+//   Plans: B=برونزية, P=فضية, E=ذهبية, T=تجريبي
+//   Codes: DONIA / SMART / CORE (any year)
+//   Example: DSC-E-2027-DONIA
 // ══════════════════════════════════════════════════
-const LIC_KEY='dsc_v3';
-let currentLicense=null;
+const LIC_KEY = 'dsc_v4';
+let currentLicense = null;
 
-// sigHash — MUST match donia-license-manager.html exactly
-function sigHash(p,e){
-  var h=5381,s=p+'|'+e;
-  for(var i=0;i<s.length;i++){h=((h<<5)+h+s.charCodeAt(i))|0;}
-  var val=Math.abs(h);
-  if(!val)return'0000';
-  var ch='0123456789abcdefghijklmnopqrstuvwxyz',r='',v=val;
-  while(v>0){r=ch[v%36]+r;v=Math.floor(v/36);}
-  return(r||'0').toUpperCase().padStart(4,'0').slice(0,4);
+const VALID_CODES = ['DONIA','SMART','CORE','LABS','TECH'];
+const PLAN_MAP = {B:'basic', P:'pro', E:'enterprise', T:'trial'};
+const MAX_MAP  = {basic:200, pro:1000, enterprise:9999, trial:100};
+
+function parseLicKey(raw) {
+  if (!raw) return null;
+  // Clean and normalize
+  const key = raw.trim().toUpperCase().replace(/\s/g,'');
+  // Accept DSC-PLAN-YEAR-CODE format
+  const m = key.match(/^DSC[-_]([BPET])[-_](\d{4})[-_]([A-Z]{4,6})$/);
+  if (!m) return null;
+  const plan = PLAN_MAP[m[1]];
+  if (!plan) return null;
+  const year = parseInt(m[2]);
+  if (!year || year < 2026 || year > 2035) return null;
+  if (!VALID_CODES.includes(m[3])) return null;
+  const expiry = year + '-12-31';
+  return { plan, expiry, maxStudents: MAX_MAP[plan], version: 4 };
 }
 
-// Parse compact key: DSC-[base64("P|EXPIRY|MAX|SIG")]
-// FIX v2.1.1: base64 is case-sensitive — do NOT uppercase the entire key!
-function parseLicKey(raw){
-  if(!raw)return null;
-  const trimmed=raw.trim();
-  // Only check prefix case-insensitively
-  if(trimmed.toUpperCase().slice(0,4)!=='DSC-')return null;
-  try{
-    // Keep original case for base64 decoding
-    let b64=trimmed.slice(4).replace(/-/g,'');
-    while(b64.length%4)b64+='=';
-    const payload=atob(b64);
-    const parts=payload.split('|');
-    if(parts.length<4)return null;
-    const planMap={B:'basic',P:'pro',E:'enterprise',T:'trial'};
-    const pc=parts[0].toUpperCase();
-    const plan=planMap[pc]||'basic';
-    const exp=parts[1];
-    const max=parseInt(parts[2])||200;
-    const sig=parts[3].toUpperCase();
-    // Verify signature (sigHash always returns uppercase)
-    if(sigHash(pc,exp)!==sig)return null;
-    return{plan,expiry:exp,maxStudents:max,version:3};
-  }catch(e){return null;}
+function validateLic(lic) {
+  if (!lic || !lic.expiry || !lic.plan) return false;
+  return new Date(lic.expiry) >= new Date();
 }
 
-function validateLic(lic){
-  if(!lic||!lic.expiry)return false;
-  return new Date(lic.expiry)>=new Date();
-}
-
-function activateLicense(){
-  const raw=document.getElementById('licKeyInput').value.trim();
-  const err=document.getElementById('licError');
-  if(!raw){err.textContent='⚠️ يرجى إدخال مفتاح الترخيص';return;}
-  const lic=parseLicKey(raw);
-  if(!lic){err.textContent='❌ صيغة المفتاح غير صحيحة — تأكد من نسخه كاملاً';return;}
-  if(!validateLic(lic)){err.textContent='⏰ انتهت صلاحية هذا المفتاح — جدّد اشتراكك';return;}
-  const toStore={...lic,activatedAt:new Date().toISOString()};
-  localStorage.setItem(LIC_KEY,JSON.stringify(toStore));
-  currentLicense=toStore;
-  err.textContent='';
+function activateLicense() {
+  const raw = document.getElementById('licKeyInput').value.trim();
+  const err = document.getElementById('licError');
+  if (!raw) { err.textContent = '⚠️ أدخل مفتاح الترخيص'; return; }
+  const lic = parseLicKey(raw);
+  if (!lic) {
+    err.textContent = '❌ مفتاح غير صحيح. الصيغة: DSC-E-2027-DONIA';
+    return;
+  }
+  if (!validateLic(lic)) {
+    err.textContent = '⏰ انتهت صلاحية المفتاح — جدّد اشتراكك';
+    return;
+  }
+  localStorage.setItem(LIC_KEY, JSON.stringify({...lic, at: Date.now()}));
+  currentLicense = lic;
+  err.textContent = '';
   toast('✅ تم تفعيل الترخيص بنجاح — مرحباً بكم!');
   showMainApp();
 }
 
-function activateTrial(){
-  const exp=new Date(Date.now()+30*864e5).toISOString().split('T')[0];
-  const lic={plan:'trial',expiry:exp,maxStudents:50,version:3,activatedAt:new Date().toISOString()};
-  localStorage.setItem(LIC_KEY,JSON.stringify(lic));
-  currentLicense=lic;
-  toast('🎁 النسخة التجريبية فعّالة لـ 30 يوم — مرحباً بكم!');
+function activateTrial() {
+  const exp = new Date(Date.now() + 30*864e5).toISOString().split('T')[0];
+  const lic = {plan:'trial', expiry:exp, maxStudents:100, version:4, at:Date.now()};
+  localStorage.setItem(LIC_KEY, JSON.stringify(lic));
+  currentLicense = lic;
+  toast('🎁 النسخة التجريبية فعّالة 30 يوم — أهلاً وسهلاً!');
   showMainApp();
 }
 
-function showMainApp(){
-  document.getElementById('licScreen').style.display='none';
-  document.getElementById('appHeader').style.display='flex';
-  document.getElementById('sidebar').style.display='flex';
-  document.getElementById('mainContent').style.display='block';
-  const l=currentLicense||{};
-  const pNames={basic:'🥉 أساسي',pro:'🥈 احترافي',enterprise:'🥇 مؤسسي',trial:'🎁 تجريبي'};
-  const inst={basic:'متوسطة — 200 طالب',pro:'متوسطة — 1000 طالب',enterprise:'مؤسسة — غير محدود',trial:'نسخة تجريبية'}[l.plan]||'DONIA SMART CORE';
-  document.getElementById('hdrInst').textContent=inst;
-  document.getElementById('licName').textContent=pNames[l.plan]||'—';
-  document.getElementById('licPlan').textContent={basic:'البرونزية',pro:'الفضية',enterprise:'الذهبية',trial:'تجريبية 30 يوم'}[l.plan]||'—';
-  document.getElementById('licExp').textContent='ينتهي: '+l.expiry;
+function showMainApp() {
+  document.getElementById('licScreen').style.display = 'none';
+  document.getElementById('appHeader').style.display = 'flex';
+  document.getElementById('sidebar').style.display = 'flex';
+  document.getElementById('mainContent').style.display = 'block';
+  const l = currentLicense || {};
+  const pn = {basic:'🥉 برونزية', pro:'🥈 فضية', enterprise:'🥇 ذهبية', trial:'🎁 تجريبي'};
+  document.getElementById('hdrInst').textContent = 'نظام الإدارة المدرسية الذكي';
+  document.getElementById('licName').textContent = pn[l.plan] || '—';
+  document.getElementById('licPlan').textContent = (l.plan==='enterprise'?'غير محدود':l.maxStudents+' طالب');
+  document.getElementById('licExp').textContent = 'ينتهي: ' + (l.expiry||'—');
   go('dashboard');
 }
 
-function checkLicense(){
-  // Check new format first (v3)
-  const stored=localStorage.getItem(LIC_KEY);
-  if(stored){
-    try{
-      const lic=JSON.parse(stored);
-      if(validateLic(lic)){currentLicense=lic;showMainApp();return;}
-      document.getElementById('licExpiredMsg').style.display='block';
-    }catch(e){}
-  }
-  // Check old format (v2) for backward compat
-  const oldStored=localStorage.getItem('dsc_license_v2');
-  if(oldStored){
-    try{
-      const old=JSON.parse(atob(oldStored));
-      if(old&&old.expiry&&new Date(old.expiry)>=new Date()){
-        const lic={plan:old.plan||'basic',expiry:old.expiry,maxStudents:old.maxStudents||200,version:3};
-        localStorage.setItem(LIC_KEY,JSON.stringify(lic));
-        currentLicense=lic;showMainApp();return;
+function checkLicense() {
+  // Clear all old formats to avoid "expired" ghost
+  ['dsc_v3','dsc_v2','dsc_license_v2','dsc_license'].forEach(k => {
+    try {
+      const old = localStorage.getItem(k);
+      if (old) {
+        const d = JSON.parse(old);
+        if (d && d.expiry && new Date(d.expiry) >= new Date()) {
+          // Migrate valid old license
+          const migrated = {plan:d.plan||'basic', expiry:d.expiry, maxStudents:d.maxStudents||200, version:4, at:Date.now()};
+          localStorage.setItem(LIC_KEY, JSON.stringify(migrated));
+        }
+        localStorage.removeItem(k);
       }
-    }catch(e){}
+    } catch(e) { localStorage.removeItem(k); }
+  });
+  
+  const stored = localStorage.getItem(LIC_KEY);
+  if (stored) {
+    try {
+      const lic = JSON.parse(stored);
+      if (validateLic(lic)) { currentLicense = lic; showMainApp(); return; }
+      // Expired — clear it and show fresh screen
+      localStorage.removeItem(LIC_KEY);
+    } catch(e) { localStorage.removeItem(LIC_KEY); }
   }
-  document.getElementById('licScreen').style.display='flex';
+  document.getElementById('licScreen').style.display = 'flex';
 }
 
-function selectPlan(el,plan){
-  document.querySelectorAll('.lic-plan').forEach(p=>p.classList.remove('active'));
+function selectPlan(el, plan) {
+  document.querySelectorAll('.lic-plan').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
 }
 
