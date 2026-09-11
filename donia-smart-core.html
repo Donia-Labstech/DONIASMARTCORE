@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
-<title>DONIA SMART CORE v2.1.0 — نظام الإدارة المدرسية الذكي</title>
+<title>DONIA SMART CORE v2.1.1 — نظام الإدارة المدرسية الذكي</title>
 <meta name="theme-color" content="#00A651">
 <meta name="application-name" content="DONIA SMART CORE">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -12,7 +12,7 @@
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="favicon-32.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<!-- DONIA SMART CORE v2.1.0 | 2.1.0 | DONIA LABS TECH | donialabstech.online -->
+<!-- DONIA SMART CORE v2.1.1 | 2.1.0 | DONIA LABS TECH | donialabstech.online -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 /* ════ DONIA SMART CORE — Design System ════ */
@@ -320,7 +320,7 @@ tr:hover td{background:#f8faff;}
         <div class="lic-plan-sub" style="color:rgba(255,255,255,.6);font-size:11px;margin-top:4px">غير محدود</div>
       </div>
     </div>
-    <input class="lic-input" id="licKeyInput" placeholder="DSC-XXXX-XXXX-XXXX-XXXX" maxlength="60">
+    <input class="lic-input" id="licKeyInput" placeholder="DSC-XXXXXXXX-XXXXXXXX-XXXXXXXX" style="font-size:11px;letter-spacing:.5px">
     <div id="licError"></div>
     <button class="lic-btn" onclick="activateLicense()" style="margin-top:12px">🔑 تفعيل الترخيص</button>
     <div class="lic-trial" onclick="activateTrial()">أو ابدأ النسخة التجريبية (30 يوم مجاناً) ←</div>
@@ -461,62 +461,67 @@ tr:hover td{background:#f8faff;}
 
 <script>
 // ══════════════════════════════════════════════════
-//   LICENSE SYSTEM
+//   LICENSE SYSTEM v2.1.1 — COMPACT KEY FORMAT
+//   Key: DSC-[base64("P|EXPIRY|MAX|SIG")]
+//   Max length: ~40 chars — works everywhere
 // ══════════════════════════════════════════════════
-const LIC_KEY='dsc_license_v2';
+const LIC_KEY='dsc_v3';
 let currentLicense=null;
 
-function genChecksum(inst,exp){
-  let h=0;
-  for(let c of (inst+exp)){h=(h<<5)-h+c.charCodeAt(0);h|=0;}
-  return Math.abs(h).toString(36).slice(0,6).toUpperCase();
+// Simple hash for signature (plan+expiry → consistent)
+function sigHash(plan,exp){
+  let h=5381;
+  const s=plan+'|'+exp;
+  for(let i=0;i<s.length;i++){h=((h<<5)+h+s.charCodeAt(i))|0;}
+  return Math.abs(h).toString(36).slice(0,4).toUpperCase();
+}
+
+// Parse compact key: DSC-[base64("P|EXPIRY|MAX|SIG")]
+function parseLicKey(raw){
+  if(!raw)return null;
+  const key=raw.trim().toUpperCase();
+  if(!key.startsWith('DSC-'))return null;
+  try{
+    let b64=key.slice(4).replace(/-/g,'');
+    b64=b64+(b64.length%4?'='.repeat(4-b64.length%4):'');
+    const payload=atob(b64);
+    const parts=payload.split('|');
+    if(parts.length<4)return null;
+    const planMap={B:'basic',P:'pro',E:'enterprise',T:'trial'};
+    const plan=planMap[parts[0]]||'basic';
+    const exp=parts[1];
+    const max=parseInt(parts[2])||200;
+    const sig=parts[3];
+    // Verify signature
+    if(sigHash(parts[0],exp)!==sig)return null;
+    return{plan,expiry:exp,maxStudents:max,version:3};
+  }catch(e){return null;}
 }
 
 function validateLic(lic){
-  if(!lic||!lic.institution||!lic.expiry)return false;
-  if(new Date(lic.expiry)<new Date())return false;
-  const cs=genChecksum(lic.institution,lic.expiry);
-  return lic.checksum===cs;
-}
-
-function generateLicKey(institution,plan,expiry,maxStudents){
-  const checksum=genChecksum(institution,expiry);
-  const payload={institution,plan,expiry,maxStudents,checksum,version:2};
-  const encoded=btoa(JSON.stringify(payload)).replace(/[=+/]/g,c=>({'+':'-','/':'_','=':''}[c]||c));
-  const chunks=encoded.match(/.{1,6}/g)||[];
-  return`DSC-${chunks.join('-')}`;
-}
-
-function parseLicKey(key){
-  if(!key||!key.startsWith('DSC-'))return null;
-  try{
-    const b64=key.slice(4).split('-').join('').replace(/[-_]/g,c=>({'-':'+','_':'/'}[c]||c));
-    const pad=b64+(b64.length%4?'='.repeat(4-b64.length%4):'');
-    return JSON.parse(atob(pad));
-  }catch{return null;}
+  if(!lic||!lic.expiry)return false;
+  return new Date(lic.expiry)>=new Date();
 }
 
 function activateLicense(){
-  const key=document.getElementById('licKeyInput').value.trim().toUpperCase();
+  const raw=document.getElementById('licKeyInput').value.trim();
   const err=document.getElementById('licError');
-  if(!key){err.textContent='يرجى إدخال مفتاح الترخيص';return;}
-  const lic=parseLicKey(key);
-  if(!lic){err.textContent='صيغة المفتاح غير صحيحة';return;}
-  if(!validateLic(lic)){
-    if(lic.expiry&&new Date(lic.expiry)<new Date())err.textContent='انتهت صلاحية هذا الترخيص';
-    else err.textContent='مفتاح الترخيص غير صالح';return;
-  }
-  localStorage.setItem(LIC_KEY,btoa(JSON.stringify(lic)));
-  currentLicense=lic;
+  if(!raw){err.textContent='⚠️ يرجى إدخال مفتاح الترخيص';return;}
+  const lic=parseLicKey(raw);
+  if(!lic){err.textContent='❌ صيغة المفتاح غير صحيحة — تأكد من نسخه كاملاً';return;}
+  if(!validateLic(lic)){err.textContent='⏰ انتهت صلاحية هذا المفتاح — جدّد اشتراكك';return;}
+  const toStore={...lic,activatedAt:new Date().toISOString()};
+  localStorage.setItem(LIC_KEY,JSON.stringify(toStore));
+  currentLicense=toStore;
   err.textContent='';
   toast('✅ تم تفعيل الترخيص بنجاح — مرحباً بكم!');
   showMainApp();
 }
 
 function activateTrial(){
-  const expiry=new Date(Date.now()+30*864e5).toISOString().split('T')[0];
-  const lic={institution:'نسخة تجريبية',plan:'trial',expiry,maxStudents:50,version:2,checksum:genChecksum('نسخة تجريبية',expiry)};
-  localStorage.setItem(LIC_KEY,btoa(JSON.stringify(lic)));
+  const exp=new Date(Date.now()+30*864e5).toISOString().split('T')[0];
+  const lic={plan:'trial',expiry:exp,maxStudents:50,version:3,activatedAt:new Date().toISOString()};
+  localStorage.setItem(LIC_KEY,JSON.stringify(lic));
   currentLicense=lic;
   toast('🎁 النسخة التجريبية فعّالة لـ 30 يوم — مرحباً بكم!');
   showMainApp();
@@ -527,26 +532,39 @@ function showMainApp(){
   document.getElementById('appHeader').style.display='flex';
   document.getElementById('sidebar').style.display='flex';
   document.getElementById('mainContent').style.display='block';
-  const l=currentLicense;
-  document.getElementById('hdrInst').textContent=l.institution;
-  document.getElementById('licName').textContent=l.institution;
-  document.getElementById('licPlan').textContent={basic:'أساسي',pro:'احترافي',enterprise:'مؤسسي',trial:'تجريبية'}[l.plan]||l.plan;
-  document.getElementById('licExp').textContent='يصدر: '+l.expiry;
+  const l=currentLicense||{};
+  const pNames={basic:'🥉 أساسي',pro:'🥈 احترافي',enterprise:'🥇 مؤسسي',trial:'🎁 تجريبي'};
+  const inst={basic:'متوسطة — 200 طالب',pro:'متوسطة — 1000 طالب',enterprise:'مؤسسة — غير محدود',trial:'نسخة تجريبية'}[l.plan]||'DONIA SMART CORE';
+  document.getElementById('hdrInst').textContent=inst;
+  document.getElementById('licName').textContent=pNames[l.plan]||'—';
+  document.getElementById('licPlan').textContent={basic:'البرونزية',pro:'الفضية',enterprise:'الذهبية',trial:'تجريبية 30 يوم'}[l.plan]||'—';
+  document.getElementById('licExp').textContent='ينتهي: '+l.expiry;
   go('dashboard');
 }
 
 function checkLicense(){
+  // Check new format first (v3)
   const stored=localStorage.getItem(LIC_KEY);
-  if(!stored){document.getElementById('licScreen').style.display='flex';return;}
-  try{
-    const lic=JSON.parse(atob(stored));
-    if(!validateLic(lic)){
+  if(stored){
+    try{
+      const lic=JSON.parse(stored);
+      if(validateLic(lic)){currentLicense=lic;showMainApp();return;}
       document.getElementById('licExpiredMsg').style.display='block';
-      document.getElementById('licScreen').style.display='flex';
-      return;
-    }
-    currentLicense=lic;showMainApp();
-  }catch{document.getElementById('licScreen').style.display='flex';}
+    }catch(e){}
+  }
+  // Check old format (v2) for backward compat
+  const oldStored=localStorage.getItem('dsc_license_v2');
+  if(oldStored){
+    try{
+      const old=JSON.parse(atob(oldStored));
+      if(old&&old.expiry&&new Date(old.expiry)>=new Date()){
+        const lic={plan:old.plan||'basic',expiry:old.expiry,maxStudents:old.maxStudents||200,version:3};
+        localStorage.setItem(LIC_KEY,JSON.stringify(lic));
+        currentLicense=lic;showMainApp();return;
+      }
+    }catch(e){}
+  }
+  document.getElementById('licScreen').style.display='flex';
 }
 
 function selectPlan(el,plan){
