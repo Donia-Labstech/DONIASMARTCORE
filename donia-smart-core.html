@@ -477,23 +477,27 @@ function sigHash(plan,exp){
 }
 
 // Parse compact key: DSC-[base64("P|EXPIRY|MAX|SIG")]
+// FIX v2.1.1: base64 is case-sensitive — do NOT uppercase the entire key!
 function parseLicKey(raw){
   if(!raw)return null;
-  const key=raw.trim().toUpperCase();
-  if(!key.startsWith('DSC-'))return null;
+  const trimmed=raw.trim();
+  // Only check prefix case-insensitively
+  if(trimmed.toUpperCase().slice(0,4)!=='DSC-')return null;
   try{
-    let b64=key.slice(4).replace(/-/g,'');
-    b64=b64+(b64.length%4?'='.repeat(4-b64.length%4):'');
+    // Keep original case for base64 decoding
+    let b64=trimmed.slice(4).replace(/-/g,'');
+    while(b64.length%4)b64+='=';
     const payload=atob(b64);
     const parts=payload.split('|');
     if(parts.length<4)return null;
     const planMap={B:'basic',P:'pro',E:'enterprise',T:'trial'};
-    const plan=planMap[parts[0]]||'basic';
+    const pc=parts[0].toUpperCase();
+    const plan=planMap[pc]||'basic';
     const exp=parts[1];
     const max=parseInt(parts[2])||200;
-    const sig=parts[3];
-    // Verify signature
-    if(sigHash(parts[0],exp)!==sig)return null;
+    const sig=parts[3].toUpperCase();
+    // Verify signature (sigHash always returns uppercase)
+    if(sigHash(pc,exp)!==sig)return null;
     return{plan,expiry:exp,maxStudents:max,version:3};
   }catch(e){return null;}
 }
