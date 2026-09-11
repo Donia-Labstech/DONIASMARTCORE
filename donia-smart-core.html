@@ -323,7 +323,7 @@ tr:hover td{background:#f8faff;}
     <input class="lic-input" id="licKeyInput" placeholder="DSC-XXXXXXXX-XXXXXXXX-XXXXXXXX" style="font-size:11px;letter-spacing:.5px">
     <div id="licError"></div>
     <button class="lic-btn" onclick="activateLicense()" style="margin-top:12px">🔑 تفعيل الترخيص</button>
-    <div class="lic-trial" onclick="activateTrial()">أو ابدأ النسخة التجريبية (30 يوم مجاناً) ←</div>
+    <div class="lic-trial" onclick="activateTrial()">🎁 ابدأ النسخة التجريبية مجاناً (30 يوم)</div>
     <div style="margin-top:10px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
       <a href="index.html#packages" style="font-size:11px;color:rgba(255,255,255,.35);border:1px solid rgba(255,255,255,.12);padding:5px 12px;border-radius:8px;transition:color .2s">📋 عرض الباقات والأسعار</a>
       <a href="https://wa.me/213674661737?text=أريد%20الاشتراك%20في%20DONIA%20SMART%20CORE" target="_blank" style="font-size:11px;color:#25D366;border:1px solid rgba(37,211,102,.25);padding:5px 12px;border-radius:8px">💬 واتساب</a>
@@ -468,12 +468,15 @@ tr:hover td{background:#f8faff;}
 const LIC_KEY='dsc_v3';
 let currentLicense=null;
 
-// Simple hash for signature (plan+expiry → consistent)
-function sigHash(plan,exp){
-  let h=5381;
-  const s=plan+'|'+exp;
-  for(let i=0;i<s.length;i++){h=((h<<5)+h+s.charCodeAt(i))|0;}
-  return Math.abs(h).toString(36).slice(0,4).toUpperCase();
+// sigHash — MUST match donia-license-manager.html exactly
+function sigHash(p,e){
+  var h=5381,s=p+'|'+e;
+  for(var i=0;i<s.length;i++){h=((h<<5)+h+s.charCodeAt(i))|0;}
+  var val=Math.abs(h);
+  if(!val)return'0000';
+  var ch='0123456789abcdefghijklmnopqrstuvwxyz',r='',v=val;
+  while(v>0){r=ch[v%36]+r;v=Math.floor(v/36);}
+  return(r||'0').toUpperCase().padStart(4,'0').slice(0,4);
 }
 
 // Parse compact key: DSC-[base64("P|EXPIRY|MAX|SIG")]
