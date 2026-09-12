@@ -1148,6 +1148,69 @@ function printOneCard(){
   </div>
 </div>
 <!-- ═══ END EXCEL MODAL ═══ -->
+
+<!-- ═══ SIGP IMPORT MODAL ═══ -->
+<div id="sigpMdl" style="position:fixed;inset:0;background:rgba(13,31,60,.85);display:none;align-items:center;justify-content:center;z-index:600;padding:16px">
+  <div style="background:#fff;border-radius:18px;padding:0;max-width:640px;width:100%;max-height:92vh;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.4)">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0D1F3C,#1a3a6c);padding:20px 24px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:#fff">📥 استيراد ملف SIGP</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px">ملف التلاميذ من نظام وزارة التربية الوطنية</div>
+      </div>
+      <button onclick="closeSIGP()" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;padding:6px 12px;cursor:pointer;color:#fff;font-size:15px">✕</button>
+    </div>
+    <!-- Body -->
+    <div style="padding:20px 24px;overflow-y:auto;max-height:calc(92vh - 80px)">
+      <!-- Step 1: Upload -->
+      <div id="sigpStep1">
+        <div onclick="document.getElementById('sigpFile').click()"
+          ondragover="event.preventDefault()" ondrop="sigpDrop(event)"
+          style="border:2px dashed #0D1F3C;border-radius:14px;padding:32px;text-align:center;cursor:pointer;background:#f8faff;transition:all .2s"
+          onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='#f8faff'">
+          <div style="font-size:40px;margin-bottom:10px">🏫</div>
+          <div style="font-size:15px;font-weight:700;color:#0D1F3C;margin-bottom:6px">اسحب ملف <code style="background:#e8eeff;padding:2px 8px;border-radius:4px">Eleve.xls</code> أو انقر للاختيار</div>
+          <div style="font-size:12px;color:#64748b">ملف التلاميذ المصدّر من نظام SIGP — وزارة التربية الوطنية الجزائرية</div>
+          <input id="sigpFile" type="file" accept=".xls,.xlsx,.html,.htm" style="display:none" onchange="sigpHandleFile(event)">
+        </div>
+        <div style="margin-top:16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 16px">
+          <div style="font-size:12px;font-weight:700;color:#0369a1;margin-bottom:8px">📋 الأعمدة التي ستُستورد تلقائياً:</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:#475569">
+            <span>✅ رقم التعريف (NIN)</span>
+            <span>✅ اللقب والاسم</span>
+            <span>✅ تاريخ الازدياد</span>
+            <span>✅ المستوى (أولى→1م…)</span>
+            <span>✅ رقم القسم</span>
+            <span>✅ رقم القيد</span>
+          </div>
+        </div>
+      </div>
+      <!-- Step 2: Preview -->
+      <div id="sigpStep2" style="display:none">
+        <div id="sigpInfo" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:14px">
+          <div id="sigpInfoTxt" style="font-size:13px;font-weight:700;color:#166534"></div>
+          <div id="sigpStats" style="font-size:11px;color:#15803d;margin-top:4px"></div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:#0D1F3C;margin-bottom:8px">👁️ معاينة أول 5 تلاميذ:</div>
+        <div style="overflow-x:auto;margin-bottom:16px">
+          <table id="sigpPrev" style="width:100%;border-collapse:collapse;font-size:11px;min-width:500px"></table>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="sigpReset()" style="padding:10px 18px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-family:inherit;font-size:12px">← رجوع</button>
+          <button onclick="sigpImport()" style="padding:10px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,#0D1F3C,#1a3a6c);color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px">✅ استيراد كل التلاميذ</button>
+        </div>
+      </div>
+      <!-- Step 3: Done -->
+      <div id="sigpStep3" style="display:none;text-align:center;padding:28px 0">
+        <div style="font-size:56px;margin-bottom:14px">🎉</div>
+        <div id="sigpRes" style="font-size:20px;font-weight:800;color:#0D1F3C;margin-bottom:8px"></div>
+        <div id="sigpDet" style="font-size:13px;color:#64748b;margin-bottom:22px"></div>
+        <button onclick="closeSIGP();go('students')" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#0D1F3C,#1a3a6c);color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">👥 عرض قاعدة التلاميذ</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ═══ END SIGP MODAL ═══ -->
 </body></html>`);
   w.document.close();setTimeout(()=>w.print(),500);
 }
@@ -1256,6 +1319,69 @@ function printAllCards(){
   </div>
 </div>
 <!-- ═══ END EXCEL MODAL ═══ -->
+
+<!-- ═══ SIGP IMPORT MODAL ═══ -->
+<div id="sigpMdl" style="position:fixed;inset:0;background:rgba(13,31,60,.85);display:none;align-items:center;justify-content:center;z-index:600;padding:16px">
+  <div style="background:#fff;border-radius:18px;padding:0;max-width:640px;width:100%;max-height:92vh;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.4)">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0D1F3C,#1a3a6c);padding:20px 24px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:#fff">📥 استيراد ملف SIGP</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px">ملف التلاميذ من نظام وزارة التربية الوطنية</div>
+      </div>
+      <button onclick="closeSIGP()" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;padding:6px 12px;cursor:pointer;color:#fff;font-size:15px">✕</button>
+    </div>
+    <!-- Body -->
+    <div style="padding:20px 24px;overflow-y:auto;max-height:calc(92vh - 80px)">
+      <!-- Step 1: Upload -->
+      <div id="sigpStep1">
+        <div onclick="document.getElementById('sigpFile').click()"
+          ondragover="event.preventDefault()" ondrop="sigpDrop(event)"
+          style="border:2px dashed #0D1F3C;border-radius:14px;padding:32px;text-align:center;cursor:pointer;background:#f8faff;transition:all .2s"
+          onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='#f8faff'">
+          <div style="font-size:40px;margin-bottom:10px">🏫</div>
+          <div style="font-size:15px;font-weight:700;color:#0D1F3C;margin-bottom:6px">اسحب ملف <code style="background:#e8eeff;padding:2px 8px;border-radius:4px">Eleve.xls</code> أو انقر للاختيار</div>
+          <div style="font-size:12px;color:#64748b">ملف التلاميذ المصدّر من نظام SIGP — وزارة التربية الوطنية الجزائرية</div>
+          <input id="sigpFile" type="file" accept=".xls,.xlsx,.html,.htm" style="display:none" onchange="sigpHandleFile(event)">
+        </div>
+        <div style="margin-top:16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 16px">
+          <div style="font-size:12px;font-weight:700;color:#0369a1;margin-bottom:8px">📋 الأعمدة التي ستُستورد تلقائياً:</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:#475569">
+            <span>✅ رقم التعريف (NIN)</span>
+            <span>✅ اللقب والاسم</span>
+            <span>✅ تاريخ الازدياد</span>
+            <span>✅ المستوى (أولى→1م…)</span>
+            <span>✅ رقم القسم</span>
+            <span>✅ رقم القيد</span>
+          </div>
+        </div>
+      </div>
+      <!-- Step 2: Preview -->
+      <div id="sigpStep2" style="display:none">
+        <div id="sigpInfo" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:14px">
+          <div id="sigpInfoTxt" style="font-size:13px;font-weight:700;color:#166534"></div>
+          <div id="sigpStats" style="font-size:11px;color:#15803d;margin-top:4px"></div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:#0D1F3C;margin-bottom:8px">👁️ معاينة أول 5 تلاميذ:</div>
+        <div style="overflow-x:auto;margin-bottom:16px">
+          <table id="sigpPrev" style="width:100%;border-collapse:collapse;font-size:11px;min-width:500px"></table>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="sigpReset()" style="padding:10px 18px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-family:inherit;font-size:12px">← رجوع</button>
+          <button onclick="sigpImport()" style="padding:10px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,#0D1F3C,#1a3a6c);color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px">✅ استيراد كل التلاميذ</button>
+        </div>
+      </div>
+      <!-- Step 3: Done -->
+      <div id="sigpStep3" style="display:none;text-align:center;padding:28px 0">
+        <div style="font-size:56px;margin-bottom:14px">🎉</div>
+        <div id="sigpRes" style="font-size:20px;font-weight:800;color:#0D1F3C;margin-bottom:8px"></div>
+        <div id="sigpDet" style="font-size:13px;color:#64748b;margin-bottom:22px"></div>
+        <button onclick="closeSIGP();go('students')" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#0D1F3C,#1a3a6c);color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">👥 عرض قاعدة التلاميذ</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ═══ END SIGP MODAL ═══ -->
 </body></html>`);
   w.document.close();setTimeout(()=>w.print(),600);
 }
@@ -1588,6 +1714,221 @@ function render(){
 }
 
 // ═══ INIT ════════════════════════════════════════
+
+// ══ SIGP IMPORT (Algerian Ministry SIGP HTML-XLS) ══
+var sigpStudents = [];
+
+var LEVEL_MAP = {
+  'أولى': '1م', 'اولى': '1م', 'الأولى': '1م',
+  'ثانية': '2م', 'الثانية': '2م',
+  'ثالثة': '3م', 'الثالثة': '3م',
+  'رابعة': '4م', 'الرابعة': '4م'
+};
+
+function openSIGP() {
+  sigpStudents = [];
+  sigpReset();
+  document.getElementById('sigpMdl').style.display = 'flex';
+}
+function closeSIGP() { document.getElementById('sigpMdl').style.display = 'none'; }
+function sigpReset() {
+  document.getElementById('sigpStep1').style.display = 'block';
+  document.getElementById('sigpStep2').style.display = 'none';
+  document.getElementById('sigpStep3').style.display = 'none';
+  document.getElementById('sigpFile').value = '';
+  sigpStudents = [];
+}
+function sigpDrop(e) { e.preventDefault(); var f = e.dataTransfer.files[0]; if (f) parseSIGP(f); }
+function sigpHandleFile(e) { var f = e.target.files[0]; if (f) parseSIGP(f); }
+
+function parseSIGP(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var text = '';
+      // Try to decode as UTF-8 first, fall back to latin
+      try { text = new TextDecoder('utf-8').decode(new Uint8Array(e.target.result)); }
+      catch(err) { text = new TextDecoder('windows-1256').decode(new Uint8Array(e.target.result)); }
+
+      // Parse as HTML
+      var parser = new DOMParser();
+      var doc = parser.parseFromString(text, 'text/html');
+      var tables = doc.querySelectorAll('table');
+
+      var mainTable = null;
+      var maxCells = 0;
+      for (var ti = 0; ti < tables.length; ti++) {
+        var cnt = tables[ti].querySelectorAll('td,th').length;
+        if (cnt > maxCells) { maxCells = cnt; mainTable = tables[ti]; }
+      }
+
+      if (!mainTable) { toast('❌ لم يتم العثور على جدول بيانات', '#E8192C'); return; }
+
+      var rows = mainTable.querySelectorAll('tr');
+      if (rows.length < 2) { toast('⚠️ الملف لا يحتوي بيانات كافية', '#F59E0B'); return; }
+
+      // Row 0 = headers (15 cells)
+      var headerCells = rows[0].querySelectorAll('td,th');
+      var headers = [];
+      for (var hi = 0; hi < headerCells.length; hi++) {
+        headers.push(headerCells[hi].textContent.trim());
+      }
+
+      // Find column indices by name
+      var COL = {};
+      var colNames = {
+        nin: ['رقم التعريف', 'رقم_التعريف'],
+        ln:  ['اللقب'],
+        fn:  ['الاسم'],
+        dob: ['تاريخ الازدياد', 'تاريخ_الازدياد'],
+        level: ['السنة'],
+        cls: ['القسم'],
+        reg: ['رقم القيد', 'رقم_القيد'],
+        system: ['نظام التمدرس', 'نظام_التمدرس']
+      };
+      for (var field in colNames) {
+        COL[field] = -1;
+        var names = colNames[field];
+        for (var ni = 0; ni < names.length; ni++) {
+          for (var ci = 0; ci < headers.length; ci++) {
+            if (headers[ci].indexOf(names[ni]) >= 0 || names[ni].indexOf(headers[ci]) >= 0) {
+              COL[field] = ci; break;
+            }
+          }
+          if (COL[field] >= 0) break;
+        }
+      }
+
+      // If headers not detected, use fixed positions for SIGP
+      var ncols = headers.length;
+      if (ncols === 15) {
+        if (COL.nin < 0) COL.nin = 0;
+        if (COL.ln < 0) COL.ln = 1;
+        if (COL.fn < 0) COL.fn = 2;
+        if (COL.dob < 0) COL.dob = 4;
+        if (COL.level < 0) COL.level = 10;
+        if (COL.cls < 0) COL.cls = 11;
+        if (COL.system < 0) COL.system = 12;
+        if (COL.reg < 0) COL.reg = 13;
+      }
+
+      // Row 1 = all students packed (SIGP specific structure)
+      // Each student = 15 consecutive cells
+      var dataCells = rows[1].querySelectorAll('td,th');
+      var allVals = [];
+      for (var di = 0; di < dataCells.length; di++) {
+        allVals.push(dataCells[di].textContent.trim());
+      }
+
+      sigpStudents = [];
+      var step = ncols || 15;
+      for (var si = 0; si <= allVals.length - step; si += step) {
+        var chunk = allVals.slice(si, si + step);
+        if (!chunk.some(function(v){ return v; })) continue;
+        function g(col) { return col >= 0 && col < chunk.length ? chunk[col] : ''; }
+        var fn = g(COL.fn), ln = g(COL.ln);
+        if (!fn && !ln) continue;
+        var rawLevel = g(COL.level);
+        var mappedLevel = LEVEL_MAP[rawLevel] || rawLevel || '1م';
+        sigpStudents.push({
+          nin: g(COL.nin) || '',
+          ln: ln || '—',
+          fn: fn || '—',
+          dob: g(COL.dob) || '',
+          level: mappedLevel,
+          cls: g(COL.cls) || '1',
+          reg: g(COL.reg) || '',
+          system: g(COL.system) || ''
+        });
+      }
+
+      if (sigpStudents.length === 0) {
+        toast('⚠️ لم يتم استخراج أي تلميذ — تحقق من الملف', '#F59E0B');
+        return;
+      }
+
+      // Build stats
+      var levelCounts = {};
+      sigpStudents.forEach(function(s) {
+        levelCounts[s.level] = (levelCounts[s.level] || 0) + 1;
+      });
+      var statsStr = Object.keys(levelCounts).sort().map(function(l) {
+        return l + ': ' + levelCounts[l];
+      }).join(' · ');
+
+      document.getElementById('sigpInfoTxt').textContent =
+        '✅ ' + file.name + ' — ' + sigpStudents.length + ' تلميذ';
+      document.getElementById('sigpStats').textContent = statsStr;
+
+      // Build preview table
+      var prev = sigpStudents.slice(0, 5);
+      var th = '<tr>' +
+        ['اللقب','الاسم','المستوى','القسم','رقم القيد','NIN'].map(function(h){
+          return '<th style="background:#0D1F3C;color:#fff;padding:6px 10px;font-size:11px;text-align:right">' + h + '</th>';
+        }).join('') + '</tr>';
+      var trs = prev.map(function(s) {
+        return '<tr>' +
+          [s.ln, s.fn, s.level, s.cls, s.reg, s.nin].map(function(v){
+            return '<td style="padding:6px 10px;border-bottom:1px solid #f1f5f9;font-size:11px">' + (v||'—') + '</td>';
+          }).join('') + '</tr>';
+      }).join('');
+      document.getElementById('sigpPrev').innerHTML = th + trs;
+
+      document.getElementById('sigpStep1').style.display = 'none';
+      document.getElementById('sigpStep2').style.display = 'block';
+
+    } catch(err) {
+      toast('❌ خطأ في قراءة الملف: ' + err.message, '#E8192C');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function sigpImport() {
+  if (!sigpStudents.length) { toast('⚠️ لا يوجد بيانات للاستيراد', '#F59E0B'); return; }
+  var maxId = students.length ? Math.max.apply(null, students.map(function(s){return s.id||0;})) : 0;
+  var added = 0, skipped = 0;
+
+  sigpStudents.forEach(function(s) {
+    // Check for duplicate NIN
+    if (s.nin && students.some(function(ex){ return ex.nin === s.nin; })) {
+      skipped++;
+      return;
+    }
+    var newId = maxId + added + 1;
+    students.push({
+      id: newId,
+      fn: s.fn,
+      ln: s.ln,
+      nin: s.nin || ('NIN' + String(newId).padStart(5,'0')),
+      reg: s.reg || ('REG' + String(newId).padStart(4,'0')),
+      level: s.level,
+      cls: s.cls,
+      guardian: '—',
+      phone: '—',
+      email: '',
+      addr: '',
+      absStart: null,
+      absDays: 0,
+      photo: null,
+      fingerId: null,
+      dob: s.dob || ''
+    });
+    added++;
+  });
+
+  saveStudentsData();
+  document.getElementById('sigpStep2').style.display = 'none';
+  document.getElementById('sigpStep3').style.display = 'block';
+  document.getElementById('sigpRes').textContent = 'تم استيراد ' + added + ' تلميذ بنجاح! 🎉';
+  document.getElementById('sigpDet').innerHTML =
+    '<span style="color:#166534;font-weight:600">إجمالي التلاميذ في النظام: ' + students.length + '</span>' +
+    (skipped ? ' &nbsp;·&nbsp; <span style="color:#F59E0B">تجاوز ' + skipped + ' (مكرر)</span>' : '');
+  updateHdrStats();
+  toast('✅ تم استيراد ' + added + ' تلميذ من ملف SIGP');
+}
+// ══ END SIGP ══
+
 window.onload = function() {
   // Load saved students first
   loadStudentsData();
@@ -1706,5 +2047,68 @@ window.onload = function() {
   </div>
 </div>
 <!-- ═══ END EXCEL MODAL ═══ -->
+
+<!-- ═══ SIGP IMPORT MODAL ═══ -->
+<div id="sigpMdl" style="position:fixed;inset:0;background:rgba(13,31,60,.85);display:none;align-items:center;justify-content:center;z-index:600;padding:16px">
+  <div style="background:#fff;border-radius:18px;padding:0;max-width:640px;width:100%;max-height:92vh;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.4)">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#0D1F3C,#1a3a6c);padding:20px 24px;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-size:17px;font-weight:800;color:#fff">📥 استيراد ملف SIGP</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.6);margin-top:2px">ملف التلاميذ من نظام وزارة التربية الوطنية</div>
+      </div>
+      <button onclick="closeSIGP()" style="background:rgba(255,255,255,.15);border:none;border-radius:8px;padding:6px 12px;cursor:pointer;color:#fff;font-size:15px">✕</button>
+    </div>
+    <!-- Body -->
+    <div style="padding:20px 24px;overflow-y:auto;max-height:calc(92vh - 80px)">
+      <!-- Step 1: Upload -->
+      <div id="sigpStep1">
+        <div onclick="document.getElementById('sigpFile').click()"
+          ondragover="event.preventDefault()" ondrop="sigpDrop(event)"
+          style="border:2px dashed #0D1F3C;border-radius:14px;padding:32px;text-align:center;cursor:pointer;background:#f8faff;transition:all .2s"
+          onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='#f8faff'">
+          <div style="font-size:40px;margin-bottom:10px">🏫</div>
+          <div style="font-size:15px;font-weight:700;color:#0D1F3C;margin-bottom:6px">اسحب ملف <code style="background:#e8eeff;padding:2px 8px;border-radius:4px">Eleve.xls</code> أو انقر للاختيار</div>
+          <div style="font-size:12px;color:#64748b">ملف التلاميذ المصدّر من نظام SIGP — وزارة التربية الوطنية الجزائرية</div>
+          <input id="sigpFile" type="file" accept=".xls,.xlsx,.html,.htm" style="display:none" onchange="sigpHandleFile(event)">
+        </div>
+        <div style="margin-top:16px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:10px;padding:14px 16px">
+          <div style="font-size:12px;font-weight:700;color:#0369a1;margin-bottom:8px">📋 الأعمدة التي ستُستورد تلقائياً:</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px;color:#475569">
+            <span>✅ رقم التعريف (NIN)</span>
+            <span>✅ اللقب والاسم</span>
+            <span>✅ تاريخ الازدياد</span>
+            <span>✅ المستوى (أولى→1م…)</span>
+            <span>✅ رقم القسم</span>
+            <span>✅ رقم القيد</span>
+          </div>
+        </div>
+      </div>
+      <!-- Step 2: Preview -->
+      <div id="sigpStep2" style="display:none">
+        <div id="sigpInfo" style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:12px 16px;margin-bottom:14px">
+          <div id="sigpInfoTxt" style="font-size:13px;font-weight:700;color:#166534"></div>
+          <div id="sigpStats" style="font-size:11px;color:#15803d;margin-top:4px"></div>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:#0D1F3C;margin-bottom:8px">👁️ معاينة أول 5 تلاميذ:</div>
+        <div style="overflow-x:auto;margin-bottom:16px">
+          <table id="sigpPrev" style="width:100%;border-collapse:collapse;font-size:11px;min-width:500px"></table>
+        </div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="sigpReset()" style="padding:10px 18px;border-radius:8px;border:1.5px solid #e2e8f0;background:#fff;cursor:pointer;font-family:inherit;font-size:12px">← رجوع</button>
+          <button onclick="sigpImport()" style="padding:10px 24px;border-radius:8px;border:none;background:linear-gradient(135deg,#0D1F3C,#1a3a6c);color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:13px">✅ استيراد كل التلاميذ</button>
+        </div>
+      </div>
+      <!-- Step 3: Done -->
+      <div id="sigpStep3" style="display:none;text-align:center;padding:28px 0">
+        <div style="font-size:56px;margin-bottom:14px">🎉</div>
+        <div id="sigpRes" style="font-size:20px;font-weight:800;color:#0D1F3C;margin-bottom:8px"></div>
+        <div id="sigpDet" style="font-size:13px;color:#64748b;margin-bottom:22px"></div>
+        <button onclick="closeSIGP();go('students')" style="padding:12px 28px;border-radius:10px;border:none;background:linear-gradient(135deg,#0D1F3C,#1a3a6c);color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">👥 عرض قاعدة التلاميذ</button>
+      </div>
+    </div>
+  </div>
+</div>
+<!-- ═══ END SIGP MODAL ═══ -->
 </body>
 </html>
