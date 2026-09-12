@@ -2457,121 +2457,339 @@ function renderStaff() {
 var rorFiltered = [];
 
 function renderRorSheet() {
+  initStaff();
   var DAYS = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس'];
-  var levels = [...new Set(students.map(function(s){return s.level;}))].sort();
-  var classes = [...new Set(students.map(function(s){return s.cls;}))].sort();
-  var selLevel = document.getElementById('ror_level')&&document.getElementById('ror_level').value||'all';
-  var selClass = document.getElementById('ror_cls')&&document.getElementById('ror_cls').value||'all';
-  var selDay   = document.getElementById('ror_day')&&document.getElementById('ror_day').value||'الأحد';
+  var PERIODS_AM = ['ح1','ح2','ح3','ح4'];
+  var PERIODS_PM = ['ح5','ح6','ح7','ح8'];
+  var levels = [];
+  students.forEach(function(s){if(levels.indexOf(s.level)<0) levels.push(s.level);});
+  levels.sort();
+  var classes = [];
+  students.forEach(function(s){if(classes.indexOf(s.cls)<0) classes.push(s.cls);});
+  classes.sort(function(a,b){return parseInt(a)-parseInt(b)||a.localeCompare(b);});
 
-  rorFiltered = students.filter(function(s){
-    return (selLevel==='all'||s.level===selLevel) && (selClass==='all'||s.cls===selClass);
-  }).sort(function(a,b){ return a.ln.localeCompare(b.ln); });
+  var selLevel = (document.getElementById('ror_level')&&document.getElementById('ror_level').value)||levels[0]||'';
+  var selClass = (document.getElementById('ror_cls')&&document.getElementById('ror_cls').value)||classes[0]||'';
+  var selDay   = (document.getElementById('ror_day')&&document.getElementById('ror_day').value)||'الأحد';
+  var selPeriod= (document.getElementById('ror_period')&&document.getElementById('ror_period').value)||'morning';
+
+  var filtered = students.filter(function(s){
+    return s.level===selLevel && s.cls===selClass;
+  }).sort(function(a,b){return a.ln.localeCompare(b.ln);});
+
+  var SCHOOL = 'متوسطة الشهيد بوضريسة محمد';
+  var SY = '2025/2026';
+
+  // Get teacher for this class/day/period from staffData
+  function getTeacher(day, period) {
+    var key = selLevel+'_'+selClass+'_'+day+'_'+period;
+    return (staffData&&staffData.schedule&&staffData.schedule[key])||'';
+  }
+
+  // Get absence mark for student/day/period
+  function getAbs(studentId, day, period) {
+    var key = 'abs_'+studentId+'_'+day+'_'+period;
+    return (window.rorMarks&&window.rorMarks[key])||'';
+  }
+
+  var periods = selPeriod==='morning' ? PERIODS_AM : PERIODS_PM;
+
+  // Build the sheet table
+  var thead = '<thead>'+
+    '<tr style="background:#0D1F3C;color:#fff">'+
+      '<th rowspan="3" style="padding:6px 8px;border:1px solid #1e3a5f;min-width:32px">الرقم</th>'+
+      '<th rowspan="3" style="padding:6px 8px;border:1px solid #1e3a5f;min-width:140px">التلاميـــذ</th>'+
+      DAYS.map(function(d){
+        return '<th colspan="'+(periods.length)+'" style="padding:6px 4px;border:1px solid #1e3a5f;text-align:center">'+d+'</th>';
+      }).join('')+
+    '</tr>'+
+    '<tr style="background:#1a3a6c;color:#fff">'+
+      DAYS.map(function(){
+        return periods.map(function(p){
+          return '<th style="padding:4px 2px;border:1px solid #1e3a5f;font-size:10px;min-width:28px">'+p+'</th>';
+        }).join('');
+      }).join('')+
+    '</tr>'+
+    '<tr style="background:#f0f4ff">'+
+      DAYS.map(function(d){
+        return periods.map(function(p,pi){
+          var t = getTeacher(d,p);
+          return '<th style="padding:3px 2px;border:1px solid #ddd;font-size:9px;color:#374151;text-align:center;cursor:pointer" '+
+            'onclick="editTeacher(\''+selLevel+'_'+selClass+'_'+d+'_'+p+'\',this)" title="انقر لتعيين الأستاذ">'+
+            (t?'<span style="color:#0D1F3C;font-size:8px;line-height:1.2">'+t+'</span>':'<span style="color:#94a3b8;font-size:9px">——</span>')+
+            '</th>';
+        }).join('');
+      }).join('')+
+    '</tr>'+
+  '</thead>';
+
+  var tbody = '<tbody>'+
+    filtered.map(function(s, idx){
+      var bg = idx%2===0?'#fff':'#f8faff';
+      return '<tr style="background:'+bg+'">'+
+        '<td style="padding:5px 6px;border:1px solid #e2e8f0;text-align:center;font-size:12px;color:#64748b">'+(idx+1)+'</td>'+
+        '<td style="padding:5px 8px;border:1px solid #e2e8f0;font-weight:600;font-size:12px">'+s.ln+' '+s.fn+'</td>'+
+        DAYS.map(function(d){
+          return periods.map(function(p){
+            var mark = getAbs(s.id, d, p);
+            return '<td style="padding:2px;border:1px solid #e2e8f0;text-align:center;cursor:pointer" '+
+              'onclick="toggleAbsMark('+s.id+',\''+d+'\',\''+p+'\')" '+
+              'id="amark_'+s.id+'_'+d.replace(/\s/g,'')+'_'+p+'">'+
+              (mark==='غ'?'<span style="color:#DC2626;font-weight:700;font-size:14px">غ</span>':
+               mark==='م'?'<span style="color:#D97706;font-weight:700;font-size:14px">م</span>':
+               '<span style="color:#e2e8f0;font-size:10px">·</span>')+
+              '</td>';
+          }).join('');
+        }).join('')+
+      '</tr>';
+    }).join('')+
+  '</tbody>';
+
+  // Teacher signature row
+  var sigRow = '<tfoot>'+
+    '<tr style="background:#FEF3C7">'+
+      '<td colspan="2" style="padding:6px;border:1px solid #ddd;font-size:11px;font-weight:700;text-align:center">توقيع الأساتذة</td>'+
+      DAYS.map(function(d){
+        return periods.map(function(p){
+          return '<td style="padding:4px 2px;border:1px solid #ddd;text-align:center;height:40px;cursor:pointer" '+
+            'onclick="signTeacher(\''+selLevel+'_'+selClass+'_'+d+'_'+p+'\')" title="توقيع الأستاذ">'+
+            (window.rorSigs&&window.rorSigs[selLevel+'_'+selClass+'_'+d+'_'+p]?
+              '<span style="font-size:18px">✅</span>':'<span style="color:#94a3b8;font-size:10px">✏️</span>')+
+            '</td>';
+        }).join('');
+      }).join('')+
+    '</tr>'+
+  '</tfoot>';
 
   return '<div class="shdr">'+
-    '<div class="stitle">📋 الورقة الدوارة — ورقة الغياب اليومية</div>'+
-    '<button class="btn" style="background:#0D1F3C;color:#fff;border:none" onclick="printRorSheet()">🖨️ طباعة</button>'+
+    '<div class="stitle">📋 الورقة الدوارة — الغياب اليومي للتلاميذ</div>'+
+    '<div style="display:flex;gap:8px;flex-wrap:wrap">'+
+      '<button class="btn" style="background:#C8A84B;color:#0D1F3C;border:none;font-weight:700" onclick="printRorSheet(\''+selLevel+'\',\''+selClass+'\',\''+selDay+'\',\''+selPeriod+'\')">🖨️ طباعة الورقة</button>'+
+      '<button class="btn" style="background:#0D1F3C;color:#fff;border:none" onclick="printAllRorSheets()">🖨️ طباعة جميع الأقسام</button>'+
+    '</div>'+
   '</div>'+
-  '<div class="card">'+
-    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">'+
-      '<div><label style="font-size:11px;font-weight:600;color:#64748b">المستوى</label>'+
-        '<select id="ror_level" class="fc" style="margin-top:4px" onchange="go(\'rorsheet\')">'+
-          '<option value="all">جميع المستويات</option>'+
+
+  '<div class="card" style="margin-bottom:12px">'+
+    '<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px">'+
+      '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">المستوى</label>'+
+        '<select id="ror_level" class="fc" onchange="go(\'rorsheet\')">'+
           levels.map(function(l){return '<option value="'+l+'"'+(selLevel===l?' selected':'')+'>'+l+'</option>';}).join('')+
         '</select></div>'+
-      '<div><label style="font-size:11px;font-weight:600;color:#64748b">القسم</label>'+
-        '<select id="ror_cls" class="fc" style="margin-top:4px" onchange="go(\'rorsheet\')">'+
-          '<option value="all">جميع الأقسام</option>'+
-          classes.map(function(c){return '<option value="'+c+'"'+(selClass===c?' selected':'')+'>القسم '+c+'</option>';}).join('')+
+      '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">القسم</label>'+
+        '<select id="ror_cls" class="fc" onchange="go(\'rorsheet\')">'+
+          classes.map(function(c){return '<option value="'+c+'"'+(selClass===c?' selected':'')+'>'+c+'</option>';}).join('')+
         '</select></div>'+
-      '<div><label style="font-size:11px;font-weight:600;color:#64748b">اليوم</label>'+
-        '<select id="ror_day" class="fc" style="margin-top:4px" onchange="go(\'rorsheet\')">'+
+      '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">اليوم</label>'+
+        '<select id="ror_day" class="fc" onchange="go(\'rorsheet\')">'+
           DAYS.map(function(d){return '<option value="'+d+'"'+(selDay===d?' selected':'')+'>'+d+'</option>';}).join('')+
         '</select></div>'+
-      '<div><label style="font-size:11px;font-weight:600;color:#64748b">التلاميذ</label>'+
-        '<div style="background:#f0fdf4;border-radius:8px;padding:10px 12px;font-size:13px;font-weight:700;color:#166534;margin-top:4px">'+rorFiltered.length+' تلميذ</div>'+
+      '<div><label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">الفترة</label>'+
+        '<select id="ror_period" class="fc" onchange="go(\'rorsheet\')">'+
+          '<option value="morning"'+(selPeriod==='morning'?' selected':'')+'>صباحية (ح1-ح4)</option>'+
+          '<option value="afternoon"'+(selPeriod==='afternoon'?' selected':'')+'>مسائية (ح5-ح8)</option>'+
+        '</select></div>'+
+      '<div style="display:flex;align-items:flex-end">'+
+        '<button class="btn bg" onclick="clearRorMarks()">🗑️ مسح علامات اليوم</button>'+
       '</div>'+
     '</div>'+
+  '</div>'+
+
+  '<div class="card">'+
+    '<div style="font-size:14px;font-weight:800;color:#0D1F3C;margin-bottom:12px;border-bottom:2px solid #0D1F3C;padding-bottom:8px">'+
+      '🏫 '+SCHOOL+' — '+SY+'&nbsp;&nbsp;|&nbsp;&nbsp;القسم: '+selLevel+' / '+selClass+'&nbsp;&nbsp;|&nbsp;&nbsp;'+selDay+'&nbsp;&nbsp;|&nbsp;&nbsp;'+(selPeriod==='morning'?'الفترة الصباحية':'الفترة المسائية')+
+      '<span style="float:left;font-size:12px;font-weight:400;color:#64748b">'+filtered.length+' تلميذ</span>'+
+    '</div>'+
+    '<div style="font-size:11px;color:#64748b;margin-bottom:8px">💡 انقر على خلية لتسجيل: <strong>غ</strong> = غائب | <strong>م</strong> = متأخر | بلا = حاضر | انقر على اسم الأستاذ لتغييره</div>'+
     '<div style="overflow-x:auto">'+
-    buildRorTable(selDay, rorFiltered)+
+      '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
+        thead+tbody+sigRow+
+      '</table>'+
     '</div>'+
   '</div>';
 }
 
-function buildRorTable(day, list) {
-  var PERIODS = ['ح1','ح2','ح3','ح4'];
-  var AM = ['ح1','ح2','ح3'];
-  var PM = ['ح4'];
-  if (!list.length) return '<div style="text-align:center;padding:30px;color:#94a3b8">لا يوجد تلاميذ في هذا الاختيار</div>';
+// ── Rotating sheet interaction functions
+if(!window.rorMarks) window.rorMarks = {};
+if(!window.rorSigs)  window.rorSigs  = {};
 
-  var today = new Date().toLocaleDateString('ar-DZ',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+function loadRorData() {
+  try {
+    var m = localStorage.getItem('dsc_ror_marks');
+    if(m) window.rorMarks = JSON.parse(m);
+    var sg = localStorage.getItem('dsc_ror_sigs');
+    if(sg) window.rorSigs = JSON.parse(sg);
+  } catch(e){}
+}
+function saveRorData() {
+  try {
+    localStorage.setItem('dsc_ror_marks', JSON.stringify(window.rorMarks));
+    localStorage.setItem('dsc_ror_sigs',  JSON.stringify(window.rorSigs));
+  } catch(e){}
+}
 
-  var ths = '<th style="background:#0D1F3C;color:#fff;padding:8px;text-align:right;min-width:130px">الاسم الكامل</th>'+
-    '<th style="background:#0D1F3C;color:#fff;padding:8px;min-width:60px">رقم</th>'+
-    '<th style="background:#1a3a6c;color:#fff;padding:8px;text-align:center" colspan="3">الفترة الصباحية</th>'+
-    '<th style="background:#2d5a8e;color:#fff;padding:8px;text-align:center" colspan="1">مسائية</th>'+
-    '<th style="background:#0D1F3C;color:#fff;padding:8px;min-width:80px">ملاحظات</th>';
+function toggleAbsMark(sid, day, period) {
+  var key = 'abs_'+sid+'_'+day+'_'+period;
+  var cur = window.rorMarks[key]||'';
+  var next = cur===''?'غ': cur==='غ'?'م':'';
+  if(next) window.rorMarks[key]=next; else delete window.rorMarks[key];
+  saveRorData();
+  var el = document.getElementById('amark_'+sid+'_'+day.replace(/\s/g,'')+'_'+period);
+  if(el) el.innerHTML = next==='غ'?'<span style="color:#DC2626;font-weight:700;font-size:14px">غ</span>':
+                        next==='م'?'<span style="color:#D97706;font-weight:700;font-size:14px">م</span>':
+                        '<span style="color:#e2e8f0;font-size:10px">·</span>';
+  if(next==='غ') toast('🔴 تسجيل: غائب', '#DC2626');
+  else if(next==='م') toast('🟡 تسجيل: متأخر', '#D97706');
+  else toast('✅ تم الإلغاء', '#16a34a');
+}
 
-  var rows = list.map(function(s, i) {
-    var cells = PERIODS.map(function(p) {
-      return '<td style="border:1px solid #e2e8f0;padding:6px 4px;text-align:center;min-width:60px;min-height:36px">&nbsp;</td>';
+function editTeacher(key, el) {
+  var cur = (staffData&&staffData.schedule&&staffData.schedule[key])||'';
+  // Build options from teachers list
+  var opts = '';
+  if(staffData&&staffData.teachers&&staffData.teachers.length){
+    opts = staffData.teachers.map(function(t){
+      return '<option value="'+t.name+'"'+(t.name===cur?' selected':'')+'>'+t.name+' ('+t.specialty+')</option>';
     }).join('');
-    return '<tr style="background:'+(i%2===0?'#fff':'#f8faff')+'">'+
-      '<td style="border:1px solid #e2e8f0;padding:7px 10px;font-weight:600;font-size:11px">'+s.ln+' '+s.fn+'</td>'+
-      '<td style="border:1px solid #e2e8f0;padding:7px;text-align:center;font-size:11px;color:#64748b">'+(i+1)+'</td>'+
-      cells+
-      '<td style="border:1px solid #e2e8f0;padding:7px"></td>'+
-    '</tr>';
-  }).join('');
+  }
+  var name = opts ? null : prompt('اسم الأستاذ:', cur);
+  if(opts){
+    var sel = document.createElement('select');
+    sel.style.cssText='padding:4px;font-size:10px;border-radius:4px;border:1px solid #0D1F3C;max-width:90px;font-family:inherit';
+    sel.innerHTML='<option value="">—</option>'+opts;
+    sel.value=cur;
+    sel.onchange=function(){
+      if(!staffData.schedule) staffData.schedule={};
+      if(sel.value) staffData.schedule[key]=sel.value; else delete staffData.schedule[key];
+      saveStaff(); go('rorsheet');
+    };
+    el.innerHTML=''; el.appendChild(sel);
+    return;
+  }
+  if(name===null) return;
+  if(!staffData.schedule) staffData.schedule={};
+  if(name.trim()) staffData.schedule[key]=name.trim(); else delete staffData.schedule[key];
+  saveStaff(); go('rorsheet');
+}
 
-  return '<div style="font-size:11px;color:#64748b;margin-bottom:6px">يوم '+day+' — '+today+'</div>'+
-    '<table style="width:100%;border-collapse:collapse;font-size:12px">'+
-      '<thead><tr>'+ths+'</tr>'+
-        '<tr>'+
-          '<th style="background:#0D1F3C;color:#fff;padding:6px"></th>'+
-          '<th style="background:#0D1F3C;color:#fff;padding:6px"></th>'+
-          PERIODS.map(function(p){
-            return '<th style="background:#1a5276;color:#fff;padding:6px;text-align:center">'+p+'</th>';
-          }).join('')+
-          '<th style="background:#0D1F3C;color:#fff;padding:6px"></th>'+
+function signTeacher(key) {
+  if(window.rorSigs[key]){
+    if(!confirm('إلغاء التوقيع؟')) return;
+    delete window.rorSigs[key];
+    toast('تم إلغاء التوقيع','#64748b');
+  } else {
+    window.rorSigs[key]=Date.now();
+    toast('✅ تم التوقيع','#16a34a');
+  }
+  saveRorData(); go('rorsheet');
+}
+
+function clearRorMarks() {
+  if(!confirm('مسح جميع علامات الغياب لهذا اليوم؟')) return;
+  var sel_l=document.getElementById('ror_level')&&document.getElementById('ror_level').value||'';
+  var sel_c=document.getElementById('ror_cls')&&document.getElementById('ror_cls').value||'';
+  var sel_d=document.getElementById('ror_day')&&document.getElementById('ror_day').value||'';
+  var toDelete=Object.keys(window.rorMarks).filter(function(k){
+    return k.indexOf('_'+sel_d+'_')>=0;
+  });
+  toDelete.forEach(function(k){delete window.rorMarks[k];});
+  saveRorData(); toast('تم المسح','#64748b'); go('rorsheet');
+}
+
+function printRorSheet(level, cls, day, period) {
+  initStaff();
+  var DAYS=['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس'];
+  var PERIODS=period==='morning'?['ح1','ح2','ح3','ح4']:['ح5','ح6','ح7','ح8'];
+  var filtered=students.filter(function(s){return s.level===level&&s.cls===cls;})
+    .sort(function(a,b){return a.ln.localeCompare(b.ln);});
+  var SCHOOL='متوسطة الشهيد بوضريسة محمد';
+  var SY='2025/2026';
+  var todayStr=new Date().toLocaleDateString('ar-DZ',{year:'numeric',month:'long',day:'numeric'});
+
+  function getTeacherN(d,p){var k=level+'_'+cls+'_'+d+'_'+p;return(staffData&&staffData.schedule&&staffData.schedule[k])||'';}
+  function getAbsN(sid,d,p){var k='abs_'+sid+'_'+d+'_'+p;return(window.rorMarks&&window.rorMarks[k])||'';}
+
+  var colSpan=DAYS.length*PERIODS.length;
+  var html='<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">'+
+    '<title>الورقة الدوارة — '+level+'/'+cls+'</title>'+
+    '<style>*{box-sizing:border-box;margin:0;padding:0}'+
+    'body{font-family:"Traditional Arabic",Tahoma,sans-serif;direction:rtl;font-size:10px;padding:6mm}'+
+    '@media print{.np{display:none} @page{size:A4 landscape;margin:6mm}}'+
+    'table{border-collapse:collapse;width:100%}'+
+    'th,td{border:1px solid #333;padding:3px 4px;text-align:center}'+
+    '.np{text-align:center;margin-bottom:10px}'+
+    '</style></head><body>'+
+    '<div class="np"><button onclick="window.print()" style="padding:8px 20px;background:#0D1F3C;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:700;font-size:13px">🖨️ طباعة</button></div>'+
+    '<div style="text-align:center;margin-bottom:6px">'+
+      '<div style="font-size:9px">الجمهورية الجزائرية الديمقراطية الشعبية — وزارة التربية الوطنية</div>'+
+      '<div style="font-size:12px;font-weight:800">'+SCHOOL+'</div>'+
+      '<div style="font-size:10px">الموسم الدراسي: '+SY+' &nbsp;|&nbsp; '+day+' '+todayStr+' &nbsp;|&nbsp; '+( period==='morning'?'الفترة الصباحية':'الفترة المسائية')+'</div>'+
+    '</div>'+
+    '<table>'+
+      '<thead>'+
+        '<tr style="background:#0D1F3C;color:#fff">'+
+          '<th rowspan="3" style="width:28px">ر</th>'+
+          '<th rowspan="3" style="width:120px;text-align:right;padding-right:5px">التلاميـذ<br><small style="font-weight:400">القسم: '+level+' / '+cls+'</small></th>'+
+          DAYS.map(function(d){return '<th colspan="'+PERIODS.length+'" style="font-size:10px">'+d+'</th>';}).join('')+
+        '</tr>'+
+        '<tr style="background:#1a3a6c;color:#fff">'+
+          DAYS.map(function(){return PERIODS.map(function(p){return '<th style="font-size:9px">'+p+'</th>';}).join('');}).join('')+
+        '</tr>'+
+        '<tr style="background:#e8f0fe;font-size:8px">'+
+          DAYS.map(function(d){return PERIODS.map(function(p){
+            var t=getTeacherN(d,p);
+            return '<th style="font-size:8px;height:20px">'+(t||'——')+'</th>';
+          }).join('');}).join('')+
         '</tr>'+
       '</thead>'+
-      '<tbody>'+rows+'</tbody>'+
-      '<tfoot><tr>'+
-        '<td colspan="2" style="border:1px solid #e2e8f0;padding:8px;font-weight:700;font-size:11px">توقيع الأستاذ</td>'+
-        PERIODS.map(function(){return '<td style="border:1px solid #e2e8f0;padding:20px;min-width:60px"></td>';}).join('')+
-        '<td style="border:1px solid #e2e8f0;padding:8px"></td>'+
-      '</tr></tfoot>'+
-    '</table>';
-}
-
-function printRorSheet() {
-  var selLevel = (document.getElementById('ror_level')||{value:'all'}).value;
-  var selClass = (document.getElementById('ror_cls')||{value:'all'}).value;
-  var selDay   = (document.getElementById('ror_day')||{value:'الأحد'}).value;
-  var today = new Date().toLocaleDateString('ar-DZ',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
-  var clsLabel = selClass==='all'?'جميع الأقسام':'القسم '+selClass;
-  var lvlLabel = selLevel==='all'?'جميع المستويات':selLevel;
-
-  var win = window.open('','_blank','width=900,height=900');
-  win.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">'+
-    '<title>الورقة الدوارة — '+selDay+'</title>'+
-    '<style>*{box-sizing:border-box}body{font-family:Tahoma,sans-serif;direction:rtl;padding:12px;font-size:11px}'+
-    '.no-print{margin-bottom:10px} @media print{.no-print{display:none} @page{size:A4;margin:8mm}}</style>'+
-    '</head><body>'+
-    '<div class="no-print"><button onclick="window.print()" style="padding:8px 20px;background:#0D1F3C;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:700">🖨️ طباعة</button></div>'+
-    '<div style="text-align:center;border-bottom:2px solid #0D1F3C;padding-bottom:8px;margin-bottom:12px">'+
-      '<div style="font-size:10px">الجمهورية الجزائرية الديمقراطية الشعبية — وزارة التربية الوطنية</div>'+
-      '<div style="font-size:13px;font-weight:800;margin:3px 0">متوسطة بوضريسة محمد الأمين - المسيلة</div>'+
-      '<div style="font-size:12px;font-weight:700">الورقة الدوارة — ورقة الغياب اليومية</div>'+
-      '<div style="font-size:11px;color:#444">يوم '+selDay+' | '+today+' | '+lvlLabel+' | '+clsLabel+'</div>'+
+      '<tbody>'+
+        filtered.map(function(s,i){
+          return '<tr style="background:'+(i%2?'#f8faff':'#fff')+'">'+
+            '<td style="font-size:9px;color:#64748b">'+(i+1)+'</td>'+
+            '<td style="text-align:right;padding-right:5px;font-weight:600">'+s.ln+' '+s.fn+'</td>'+
+            DAYS.map(function(d){return PERIODS.map(function(p){
+              var m=getAbsN(s.id,d,p);
+              return '<td style="height:18px;font-weight:700;color:'+(m==='غ'?'#DC2626':m==='م'?'#D97706':'#999')+'">'+(m||'')+'</td>';
+            }).join('');}).join('')+
+          '</tr>';
+        }).join('')+
+      '</tbody>'+
+      '<tfoot>'+
+        '<tr style="background:#FEF3C7;height:35px">'+
+          '<td colspan="2" style="font-weight:700;font-size:10px">توقيع الأساتذة<br>حسب توزيع الحصص</td>'+
+          DAYS.map(function(d){return PERIODS.map(function(p){
+            var signed=window.rorSigs&&window.rorSigs[level+'_'+cls+'_'+d+'_'+p];
+            return '<td style="font-size:18px">'+(signed?'✅':'')+'</td>';
+          }).join('');}).join('')+
+        '</tr>'+
+      '</tfoot>'+
+    '</table>'+
+    '<div style="display:flex;justify-content:space-between;margin-top:10px;font-size:9px">'+
+      '<div>مستشار التربية: ______________&nbsp;&nbsp; التوقيع: __________</div>'+
+      '<div>الناظر: ______________&nbsp;&nbsp; التوقيع: __________</div>'+
+      '<div>المدير(ة): ______________&nbsp;&nbsp; التوقيع: __________</div>'+
     '</div>'+
-    buildRorTable(selDay, rorFiltered)+
-    '</body></html>');
-  win.document.close();
+  '</body></html>';
+
+  var win=window.open('','_blank','width=1200,height=850');
+  win.document.write(html); win.document.close();
 }
 
-// ══ RAPJ — تقرير مستشار التربية ══
+function printAllRorSheets(){
+  var cls_combos=[];
+  students.forEach(function(s){
+    var k=s.level+'|'+s.cls;
+    if(!cls_combos.some(function(c){return c===k;})) cls_combos.push(k);
+  });
+  cls_combos.sort();
+  toast('🖨️ سيتم فتح '+cls_combos.length+' نافذة...','#0D1F3C');
+  cls_combos.forEach(function(k,i){
+    setTimeout(function(){
+      var parts=k.split('|');
+      printRorSheet(parts[0],parts[1],'الأحد','morning');
+    }, i*200);
+  });
+}
+
 function renderRapj() {
   initStaff();
   var today = new Date().toLocaleDateString('ar-DZ',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
@@ -2707,11 +2925,32 @@ function printRAPJ() {
     '</body></html>');
   win.document.close();
 }
+function addTeacherAbsence() {
+  var n=document.getElementById('tab_tname').value.trim();
+  var s=document.getElementById('tab_tsubj').value.trim();
+  var c=document.getElementById('tab_tcls').value.trim();
+  if(!n){toast('أدخل اسم الأستاذ','#F59E0B');return;}
+  if(!staffData.teacherAbs) staffData.teacherAbs=[];
+  staffData.teacherAbs.push({name:n,subject:s,classes:c});
+  saveStaff(); go('rapj');
+}
+function removeTeacherAbsence(i){
+  if(!staffData.teacherAbs) return;
+  staffData.teacherAbs.splice(i,1);
+  saveStaff(); go('rapj');
+}
+function saveRapjNotes(){
+  var v=document.getElementById('rapj_notes').value;
+  staffData.rapjNotes=v; saveStaff();
+  toast('✅ تم حفظ الملاحظات','#16a34a');
+}
+
 // ══ END STAFF/RAPJ ══
 
 window.onload = function() {
   // Load saved students first
   loadStudentsData();
+  if(typeof loadRorData==='function') loadRorData();
   updateClock();
   setInterval(updateClock, 1000);
   // Check license
