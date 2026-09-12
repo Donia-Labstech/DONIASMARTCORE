@@ -1484,70 +1484,119 @@ function fireAction(id,trig){
 // ═══ REPORTS ═════════════════════════════════════
 let repPeriod='daily',repLvl='all';
 function renderReports(){
-  const rows=students.filter(s=>repLvl==='all'||s.level===repLvl);
-  const tot=students.length,pres=students.filter(s=>s.absDays===0).length,
-        w1=students.filter(s=>s.absDays>=TRIGGERS.w1&&s.absDays<TRIGGERS.w2).length,
-        w2=students.filter(s=>s.absDays>=TRIGGERS.w2&&s.absDays<TRIGGERS.notice).length,
-        ntc=students.filter(s=>s.absDays>=TRIGGERS.notice&&s.absDays<TRIGGERS.excl).length,
-        exc=students.filter(s=>s.absDays>=TRIGGERS.excl).length;
+  const SCHOOL='متوسطة الشهيد بوضريسة محمد';
+  const DIR='مديرية التربية - الولاية';
+  const today=new Date().toLocaleDateString('ar-DZ',{year:'numeric',month:'long',day:'numeric'});
+  const todayISO=new Date().toISOString().split('T')[0];
+
+  // Categorise students by status
+  const w1List=students.filter(s=>s.absDays>=TRIGGERS.w1&&s.absDays<TRIGGERS.w2);
+  const w2List=students.filter(s=>s.absDays>=TRIGGERS.w2&&s.absDays<TRIGGERS.notice);
+  const noticeList=students.filter(s=>s.absDays>=TRIGGERS.notice&&s.absDays<TRIGGERS.excl);
+  const exclList=students.filter(s=>s.absDays>=TRIGGERS.excl);
+
+  const tab=(id,label,count,color)=>`
+    <button onclick="repTab='${id}';go('reports')"
+      style="padding:10px 16px;border-radius:10px;border:2px solid ${repTab===id?color:'#e2e8f0'};
+             background:${repTab===id?color:'#fff'};color:${repTab===id?'#fff':'#374151'};
+             font-weight:700;font-size:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px">
+      <span style="background:${repTab===id?'rgba(255,255,255,.3)':'#f1f5f9'};color:${repTab===id?'#fff':color};
+                   border-radius:20px;padding:2px 8px;font-size:12px">${count}</span>
+      ${label}
+    </button>`;
+
+  const studentRow=(s,type)=>{
+    const status=getStatus(s.absDays);
+    return`<tr style="cursor:pointer" onclick="printForm('${type}','${s.id}')">
+      <td>${s.reg||'—'}</td>
+      <td style="font-weight:600">${s.ln} ${s.fn}</td>
+      <td>${s.level||'—'} / ${s.cls||'—'}</td>
+      <td style="font-weight:700;color:#DC2626">${s.absDays} يوم</td>
+      <td>${s.guardian||'—'}</td>
+      <td style="color:#64748b;font-size:11px">${s.phone||'—'}</td>
+      <td><button onclick="event.stopPropagation();printForm('${type}','${s.id}')"
+            style="padding:5px 10px;border:none;border-radius:6px;background:#0D1F3C;color:#fff;cursor:pointer;font-size:11px;font-family:inherit">
+          🖨️ طباعة</button></td>
+    </tr>`;
+  };
+
+  const tableWrap=(list,type,emptyMsg)=>list.length===0
+    ? `<div style="text-align:center;padding:40px;color:#94a3b8">${emptyMsg}</div>`
+    : `<div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:#0D1F3C;color:#fff">
+            <th style="padding:10px 12px">الرقم</th>
+            <th>الاسم الكامل</th>
+            <th>المستوى/القسم</th>
+            <th>أيام الغياب</th>
+            <th>الولي</th>
+            <th>الهاتف</th>
+            <th>إجراء</th>
+          </tr></thead>
+          <tbody>${list.map(s=>studentRow(s,type)).join('')}</tbody>
+        </table>
+        <div style="margin-top:10px;display:flex;gap:10px;justify-content:flex-end">
+          <button onclick="printAllForms('${type}',[${list.map(s=>s.id).join(',')}])"
+            style="padding:9px 18px;border:none;border-radius:8px;background:#0D1F3C;color:#fff;font-weight:700;cursor:pointer;font-family:inherit;font-size:12px">
+            🖨️ طباعة الجميع (${list.length} نموذج)
+          </button>
+        </div>
+       </div>`;
+
+  repTab=repTab||'w1';
+  const tabs=[
+    {id:'w1',label:'الإشعار الأول',list:w1List,color:'#D97706',empty:'لا يوجد تلاميذ في هذه المرحلة'},
+    {id:'w2',label:'الإشعار الثاني',list:w2List,color:'#EA580C',empty:'لا يوجد تلاميذ في هذه المرحلة'},
+    {id:'notice',label:'الإعذار',list:noticeList,color:'#DC2626',empty:'لا يوجد تلاميذ في هذه المرحلة'},
+    {id:'excl',label:'الشطب',list:exclList,color:'#6B0000',empty:'لا يوجد تلاميذ في هذه المرحلة'},
+  ];
+  const active=tabs.find(t=>t.id===repTab)||tabs[0];
+
   return`
   <div class="shdr">
-    <div class="stitle">📊 التقارير الإدارية</div>
+    <div class="stitle">📋 التقارير اليومية — النماذج الرسمية</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn bn bo" onclick="toast('📥 جاري تصدير Excel...')">📥 Excel</button>
-      <button class="btn br" onclick="toast('📄 جاري توليد PDF...')">📄 PDF</button>
-      <button class="btn bg" onclick="window.print()">🖨️ طباعة</button>
+      <button class="btn bn bo" onclick="printDailySummary()">📄 ملخص يومي</button>
     </div>
   </div>
-  <div class="g3" style="margin-bottom:16px">
-    ${[['الإجمالي',tot,'#0B1D35'],['حاضرون',pres,'#006233'],['إشعار أول',w1,'#D97706'],['إشعار ثانٍ',w2,'#EA580C'],['إعذار',ntc,'#DC2626'],['مقترح شطب',exc,'#6B0000']].map(([lb,vl,cl])=>
-      `<div class="card" style="padding:13px 16px;border-right:4px solid ${cl};display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:12px;color:#555">${lb}</span>
-        <span style="font-size:26px;font-weight:bold;color:${cl}">${vl}</span>
+
+  <!-- Stats strip -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+    ${[
+      {label:'إشعار أول',count:w1List.length,color:'#D97706',bg:'#FEF3C7',icon:'⚡'},
+      {label:'إشعار ثانٍ',count:w2List.length,color:'#EA580C',bg:'#FEE2E2',icon:'⚠️'},
+      {label:'إعذار',count:noticeList.length,color:'#DC2626',bg:'#FEE2E2',icon:'🚨'},
+      {label:'مقترح الشطب',count:exclList.length,color:'#6B0000',bg:'#f1f5f9',icon:'❌'},
+    ].map(s=>`
+      <div style="background:${s.bg};border-radius:12px;padding:14px;text-align:center;border:1.5px solid ${s.color}30">
+        <div style="font-size:22px">${s.icon}</div>
+        <div style="font-size:24px;font-weight:800;color:${s.color}">${s.count}</div>
+        <div style="font-size:11px;color:#374151;font-weight:600">${s.label}</div>
       </div>`).join('')}
   </div>
-  <div class="card" style="margin-bottom:16px;padding:14px 18px">
-    <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
-      <div><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">نوع التقرير</label>
-        <select class="fc" onchange="repPeriod=this.value" style="width:auto">
-          <option value="daily" ${repPeriod==='daily'?'selected':''}>يومي</option>
-          <option value="weekly" ${repPeriod==='weekly'?'selected':''}>أسبوعي</option>
-          <option value="monthly" ${repPeriod==='monthly'?'selected':''}>شهري</option>
-        </select>
-      </div>
-      <div><label style="font-size:11px;color:#666;display:block;margin-bottom:3px">المستوى</label>
-        <select class="fc" onchange="repLvl=this.value;renderRepInline()" style="width:auto">
-          <option value="all">جميع المستويات</option>
-          ${['1م','2م','3م','4م'].map(l=>`<option value="${l}" ${repLvl===l?'selected':''}>${l}</option>`).join('')}
-        </select>
-      </div>
-      <div style="font-size:12px;color:#888">إجمالي: <strong style="color:#0B1D35">${rows.length}</strong> سجل</div>
-    </div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+    ${tabs.map(t=>tab(t.id,t.label,t.list.length,t.color)).join('')}
   </div>
+
+  <!-- Active table -->
   <div class="card">
-    <div style="font-size:13px;font-weight:bold;color:#0B1D35;margin-bottom:12px">📋 تقرير ${repPeriod==='daily'?'يومي':repPeriod==='weekly'?'أسبوعي':'شهري'} — 2024/2025</div>
-    <div class="twrap">
-      <table>
-        <thead><tr><th>#</th><th>الصورة</th><th>الاسم الكامل</th><th>المستوى</th><th>رقم التسجيل</th><th>الرقم التعريفي</th><th>أيام الغياب</th><th>بداية الغياب</th><th>الولي</th><th>الهاتف</th><th>الحالة</th></tr></thead>
-        <tbody id="repBody">
-          ${rows.map((s,i)=>`<tr>
-            <td style="color:#999">${i+1}</td>
-            <td><div style="width:32px;height:32px;border-radius:50%;overflow:hidden;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:16px">${s.photo?`<img src="${s.photo}" style="width:100%;height:100%;object-fit:cover">`:'👤'}</div></td>
-            <td style="font-weight:bold;color:#0B1D35">${s.fn} ${s.ln}</td>
-            <td>${s.level}</td>
-            <td style="font-family:monospace;font-size:10px">${s.reg}</td>
-            <td style="font-family:monospace;font-size:10px">${s.nin}</td>
-            <td style="text-align:center;font-weight:bold;color:${s.absDays>0?'#D21034':'#006233'}">${s.absDays}</td>
-            <td style="font-size:10px">${s.absStart||'—'}</td>
-            <td>${s.guardian}</td>
-            <td style="direction:ltr;font-size:11px">${s.phone}</td>
-            <td>${stag(s.absDays)}</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-size:14px;font-weight:800;color:#0D1F3C">
+        نموذج: ${active.label}
+        <span style="font-size:11px;font-weight:400;color:#64748b;margin-right:8px">
+        ${active.id==='w1'?'('+TRIGGERS.w1+' — '+(TRIGGERS.w2-1)+' يوم)':
+          active.id==='w2'?'('+TRIGGERS.w2+' — '+(TRIGGERS.notice-1)+' يوم)':
+          active.id==='notice'?'('+TRIGGERS.notice+' — '+(TRIGGERS.excl-1)+' يوم)':
+          '('+TRIGGERS.excl+' يوم وأكثر)'}
+        </span>
+      </div>
     </div>
+    ${tableWrap(active.list,active.id,active.empty)}
   </div>`;
 }
+
 function renderRepInline(){
   const rows=students.filter(s=>repLvl==='all'||s.level===repLvl);
   const body=document.getElementById('repBody');
@@ -1930,6 +1979,297 @@ function sigpImport() {
   toast('✅ تم استيراد ' + added + ' تلميذ من ملف SIGP');
 }
 // ══ END SIGP ══
+
+
+// ══ OFFICIAL FORM PRINTING ══
+var repTab='w1';
+
+function getSchoolInfo(){
+  // Read from settings inputs if available, else defaults
+  var inputs=document.querySelectorAll('.card input');
+  var school='متوسطة الشهيد بوضريسة محمد';
+  var dir='مديرية التربية للولاية';
+  var wilaya='';
+  if(inputs[0]) school=inputs[0].value||school;
+  if(inputs[2]) dir=inputs[2].value||dir;
+  if(inputs[3]) wilaya=inputs[3].value||wilaya;
+  return {school:school,dir:dir,wilaya:wilaya};
+}
+
+function fmtDate(iso){
+  if(!iso||iso==='null') return '............';
+  try{
+    var d=new Date(iso);
+    return d.toLocaleDateString('ar-DZ',{year:'numeric',month:'long',day:'numeric'});
+  }catch(e){return iso;}
+}
+
+function todayFmt(){
+  return new Date().toLocaleDateString('ar-DZ',{year:'numeric',month:'long',day:'numeric'});
+}
+
+function getStudent(id){
+  return students.find(function(s){return s.id===parseInt(id)||s.id===id;})||null;
+}
+
+// ── Form templates ──────────────────────────────────────────────
+
+function buildHeader(info){
+  return '<div style="text-align:center;border-bottom:2px solid #0D1F3C;padding-bottom:8px;margin-bottom:12px">'+
+    '<div style="font-size:11px;font-weight:700">الجمهورية الجزائرية الديمقراطية الشعبية</div>'+
+    '<div style="font-size:10px">وزارة التربية الوطنية</div>'+
+    '<div style="font-size:10px">'+info.dir+'</div>'+
+    '<div style="font-size:11px;font-weight:700;margin-top:4px">'+info.school+'</div>'+
+    '</div>';
+}
+
+function buildStudentInfo(s){
+  return '<table style="width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px">'+
+    '<tr><td style="padding:3px 6px;font-weight:600;width:35%">اسم التلميذ:</td>'+
+      '<td style="padding:3px 6px;border-bottom:1px dotted #999">'+s.ln+' '+s.fn+'</td>'+
+    '</tr>'+
+    '<tr><td style="padding:3px 6px;font-weight:600">رقم القيد:</td>'+
+      '<td style="padding:3px 6px;border-bottom:1px dotted #999">'+s.reg+'</td>'+
+    '</tr>'+
+    '<tr><td style="padding:3px 6px;font-weight:600">المستوى / القسم:</td>'+
+      '<td style="padding:3px 6px;border-bottom:1px dotted #999">'+s.level+' / القسم '+s.cls+'</td>'+
+    '</tr>'+
+    '<tr><td style="padding:3px 6px;font-weight:600">اسم الولي:</td>'+
+      '<td style="padding:3px 6px;border-bottom:1px dotted #999">'+s.guardian+'</td>'+
+    '</tr>'+
+    '<tr><td style="padding:3px 6px;font-weight:600">رقم التعريفي (NIN):</td>'+
+      '<td style="padding:3px 6px;border-bottom:1px dotted #999;font-family:monospace">'+s.nin+'</td>'+
+    '</tr>'+
+  '</table>';
+}
+
+function buildSignature(){
+  return '<div style="display:flex;justify-content:space-between;margin-top:28px;font-size:10px">'+
+    '<div style="text-align:center">'+
+      '<div>إمضاء الولي / المعني</div>'+
+      '<div style="margin-top:30px;border-top:1px solid #333;padding-top:4px;min-width:120px">&nbsp;</div>'+
+    '</div>'+
+    '<div style="text-align:center">'+
+      '<div>إمضاء المدير(ة)</div>'+
+      '<div style="margin-top:30px;border-top:1px solid #333;padding-top:4px;min-width:120px">&nbsp;</div>'+
+    '</div>'+
+  '</div>';
+}
+
+function formW1(s,info){
+  return '<div style="font-family:\'Traditional Arabic\',\'Amiri\',Tahoma,sans-serif;direction:rtl;font-size:11px;line-height:1.8;padding:16px;border:2px solid #D97706;border-radius:8px;margin-bottom:16px;page-break-inside:avoid">'+
+    buildHeader(info)+
+    '<div style="text-align:center;margin-bottom:10px">'+
+      '<span style="font-size:14px;font-weight:800;background:#FEF3C7;padding:4px 20px;border-radius:4px;border:1px solid #D97706">الموضوع: إشعار غياب أول</span>'+
+    '</div>'+
+    '<p style="margin:6px 0 10px">السيد(ة) / ولي أمر التلميذ: <strong style="border-bottom:1px solid #333;padding-bottom:1px">'+s.guardian+'</strong></p>'+
+    buildStudentInfo(s)+
+    '<div style="background:#FFFBEB;border:1px solid #D97706;border-radius:6px;padding:10px;margin-bottom:10px">'+
+      '<p style="margin:0 0 6px">تُعلمكم إدارة المؤسسة أن نجلكم / كريمتكم غاب(ت) عن الدراسة مدة <strong style="color:#D97706">'+s.absDays+' أيام</strong> ابتداءً من تاريخ: <strong>'+fmtDate(s.absStart)+'</strong>.</p>'+
+      '<p style="margin:0">يُرجى الاتصال بإدارة المؤسسة في أقرب وقت ممكن لتقديم المبرر أو اتخاذ اللازم.</p>'+
+    '</div>'+
+    '<p style="font-size:10px;color:#666;margin-bottom:8px">📞 التواصل مع المؤسسة للتوضيح والمتابعة.</p>'+
+    '<div style="text-align:left;font-size:10px;margin-bottom:6px">بتاريخ: '+todayFmt()+'</div>'+
+    buildSignature()+
+  '</div>';
+}
+
+function formW2(s,info){
+  return '<div style="font-family:\'Traditional Arabic\',\'Amiri\',Tahoma,sans-serif;direction:rtl;font-size:11px;line-height:1.8;padding:16px;border:2px solid #EA580C;border-radius:8px;margin-bottom:16px;page-break-inside:avoid">'+
+    buildHeader(info)+
+    '<div style="text-align:center;margin-bottom:10px">'+
+      '<span style="font-size:14px;font-weight:800;background:#FEE2E2;padding:4px 20px;border-radius:4px;border:1px solid #EA580C">الموضوع: إشعار غياب ثانٍ ⚠️</span>'+
+    '</div>'+
+    '<p style="margin:6px 0 10px">السيد(ة) / ولي أمر التلميذ: <strong style="border-bottom:1px solid #333;padding-bottom:1px">'+s.guardian+'</strong></p>'+
+    buildStudentInfo(s)+
+    '<div style="background:#FEF2F2;border:1px solid #EA580C;border-radius:6px;padding:10px;margin-bottom:10px">'+
+      '<p style="margin:0 0 6px">نُعيد إعلامكم بغياب نجلكم / كريمتكم عن الدراسة لمدة بلغت <strong style="color:#EA580C">'+s.absDays+' أيام</strong> دون تقديم مبرر مقبول.</p>'+
+      '<p style="margin:0 0 6px">وهذا إشعار <strong>ثانٍ وأخير</strong> قبل اتخاذ الإجراءات القانونية اللازمة.</p>'+
+      '<p style="margin:0">يُلزم ولي الأمر بالحضور شخصياً إلى المؤسسة خلال <strong>48 ساعة</strong> من تاريخ استلام هذا الإشعار.</p>'+
+    '</div>'+
+    '<div style="text-align:left;font-size:10px;margin-bottom:6px">بتاريخ: '+todayFmt()+'</div>'+
+    buildSignature()+
+  '</div>';
+}
+
+function formNotice(s,info){
+  return '<div style="font-family:\'Traditional Arabic\',\'Amiri\',Tahoma,sans-serif;direction:rtl;font-size:11px;line-height:1.8;padding:16px;border:2px solid #DC2626;border-radius:8px;margin-bottom:16px;page-break-inside:avoid">'+
+    buildHeader(info)+
+    '<div style="text-align:center;margin-bottom:10px">'+
+      '<span style="font-size:14px;font-weight:800;background:#FEE2E2;padding:4px 20px;border-radius:4px;border:1px solid #DC2626">الموضوع: إعـــذار 🚨</span>'+
+    '</div>'+
+    '<p style="margin:6px 0 10px">السيد(ة) / ولي أمر التلميذ: <strong style="border-bottom:1px solid #333;padding-bottom:1px">'+s.guardian+'</strong></p>'+
+    buildStudentInfo(s)+
+    '<div style="background:#FEF2F2;border:2px solid #DC2626;border-radius:6px;padding:10px;margin-bottom:10px">'+
+      '<p style="margin:0 0 8px;font-weight:700;color:#DC2626">⚠️ إعذار رسمي</p>'+
+      '<p style="margin:0 0 6px">بناءً على غياب التلميذ / التلميذة المتكرر والمستمر البالغ <strong style="color:#DC2626">'+s.absDays+' يوم</strong> تطبيقاً للمنشور الوزاري رقم <strong>1133</strong>،</p>'+
+      '<p style="margin:0 0 6px">تُنبّه إدارة المؤسسة ولي الأمر رسمياً بضرورة الالتزام بالحضور المنتظم، وإلا ستُتخذ إجراءات <strong>الشطب من قوائم المؤسسة</strong>.</p>'+
+      '<p style="margin:0">يلزم الحضور الشخصي لولي الأمر خلال <strong>72 ساعة</strong> من تاريخ التوصل.</p>'+
+    '</div>'+
+    '<div style="font-size:10px;color:#666;margin-bottom:4px">تاريخ بداية الغياب: '+fmtDate(s.absStart)+'</div>'+
+    '<div style="text-align:left;font-size:10px;margin-bottom:6px">بتاريخ: '+todayFmt()+'</div>'+
+    buildSignature()+
+  '</div>';
+}
+
+function formExcl(s,info){
+  return '<div style="font-family:\'Traditional Arabic\',\'Amiri\',Tahoma,sans-serif;direction:rtl;font-size:11px;line-height:1.8;padding:16px;border:3px solid #6B0000;border-radius:8px;margin-bottom:16px;page-break-inside:avoid">'+
+    buildHeader(info)+
+    '<div style="text-align:center;margin-bottom:10px">'+
+      '<span style="font-size:14px;font-weight:800;background:#f1f5f9;padding:4px 20px;border-radius:4px;border:2px solid #6B0000;color:#6B0000">الموضوع: مقترح الشطب ❌</span>'+
+    '</div>'+
+    '<p style="margin:6px 0 10px">السيد(ة) / ولي أمر التلميذ: <strong style="border-bottom:1px solid #333;padding-bottom:1px">'+s.guardian+'</strong></p>'+
+    buildStudentInfo(s)+
+    '<div style="background:#fdf2f8;border:2px solid #6B0000;border-radius:6px;padding:10px;margin-bottom:10px">'+
+      '<p style="margin:0 0 8px;font-weight:700;color:#6B0000">⛔ قرار الشطب</p>'+
+      '<p style="margin:0 0 6px">بناءً على غياب التلميذ / التلميذة لمدة <strong style="color:#6B0000">'+s.absDays+' يوم</strong> متراكمة دون مبرر مقبول، وبعد استنفاذ كل الإجراءات التحذيرية (الإشعار الأول، الإشعار الثاني، الإعذار)،</p>'+
+      '<p style="margin:0 0 6px">تقرر إدارة المؤسسة — تطبيقاً للمنشور الوزاري رقم <strong>1133</strong> — <strong>اقتراح شطب التلميذ/ة من قوائم المؤسسة</strong>.</p>'+
+      '<p style="margin:0">يُمكن لولي الأمر الطعن في هذا القرار بالحضور إلى مديرية التربية خلال <strong>10 أيام</strong> من تاريخ التوصل.</p>'+
+    '</div>'+
+    '<div style="font-size:10px;color:#666;margin-bottom:4px">تاريخ بداية الغياب: '+fmtDate(s.absStart)+' | إجمالي الغياب: '+s.absDays+' يوم</div>'+
+    '<div style="text-align:left;font-size:10px;margin-bottom:6px">بتاريخ: '+todayFmt()+'</div>'+
+    buildSignature()+
+  '</div>';
+}
+
+function getFormHTML(type,s,info){
+  if(type==='w1') return formW1(s,info);
+  if(type==='w2') return formW2(s,info);
+  if(type==='notice') return formNotice(s,info);
+  if(type==='excl') return formExcl(s,info);
+  return '';
+}
+
+function printForm(type,id){
+  var s=getStudent(id);
+  if(!s){toast('❌ لم يتم العثور على التلميذ','#E8192C');return;}
+  var info=getSchoolInfo();
+  var typeNames={w1:'إشعار غياب أول',w2:'إشعار غياب ثانٍ',notice:'إعذار',excl:'مقترح الشطب'};
+  var win=window.open('','_blank','width=800,height=900');
+  win.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head><meta charset="UTF-8">
+<title>${typeNames[type]||type} — ${s.ln} ${s.fn}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Traditional Arabic','Amiri',Tahoma,sans-serif;direction:rtl;background:#fff;padding:20px}
+@media print{body{padding:8mm} .no-print{display:none!important} @page{size:A4;margin:10mm}}
+.no-print{text-align:center;margin-bottom:16px;display:flex;gap:10px;justify-content:center}
+.no-print button{padding:10px 24px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-family:inherit;font-weight:700}
+.print-btn{background:#0D1F3C;color:#fff}
+.close-btn{background:#f1f5f9;color:#374151}
+</style>
+</head>
+<body>
+<div class="no-print">
+  <button class="print-btn" onclick="window.print()">🖨️ طباعة</button>
+  <button class="close-btn" onclick="window.close()">✕ إغلاق</button>
+</div>
+${getFormHTML(type,s,info)}
+</body></html>`);
+  win.document.close();
+}
+
+function printAllForms(type,ids){
+  var info=getSchoolInfo();
+  var typeNames={w1:'إشعار غياب أول',w2:'إشعار غياب ثانٍ',notice:'إعذار',excl:'مقترح الشطب'};
+  var validStudents=ids.map(function(id){return getStudent(id);}).filter(Boolean);
+  if(!validStudents.length){toast('⚠️ لا يوجد تلاميذ','#F59E0B');return;}
+
+  // 2 per page
+  var pages=[];
+  for(var i=0;i<validStudents.length;i+=2){
+    var pair=validStudents.slice(i,i+2);
+    var pageHTML='<div style="display:grid;grid-template-columns:1fr;gap:16px;page-break-after:'+(i+2<validStudents.length?'always':'auto')+'">';
+    pair.forEach(function(s){pageHTML+=getFormHTML(type,s,info);});
+    pageHTML+='</div>';
+    pages.push(pageHTML);
+  }
+
+  var win=window.open('','_blank','width=900,height=1000');
+  win.document.write(`<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head><meta charset="UTF-8">
+<title>${typeNames[type]||type} — طباعة جماعية</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Traditional Arabic','Amiri',Tahoma,sans-serif;direction:rtl;background:#fff;padding:16px}
+@media print{body{padding:6mm} .no-print{display:none!important} @page{size:A4;margin:8mm}}
+.no-print{text-align:center;margin-bottom:16px;display:flex;gap:10px;justify-content:center}
+.no-print button{padding:10px 24px;border:none;border-radius:8px;cursor:pointer;font-size:14px;font-family:inherit;font-weight:700}
+</style>
+</head>
+<body>
+<div class="no-print">
+  <button style="background:#0D1F3C;color:#fff" onclick="window.print()">🖨️ طباعة الكل (${validStudents.length} نموذج)</button>
+  <button style="background:#f1f5f9;color:#374151" onclick="window.close()">✕ إغلاق</button>
+</div>
+${pages.join('')}
+</body></html>`);
+  win.document.close();
+}
+
+function printDailySummary(){
+  var info=getSchoolInfo();
+  var w1=students.filter(function(s){return s.absDays>=TRIGGERS.w1&&s.absDays<TRIGGERS.w2;});
+  var w2=students.filter(function(s){return s.absDays>=TRIGGERS.w2&&s.absDays<TRIGGERS.notice;});
+  var ntc=students.filter(function(s){return s.absDays>=TRIGGERS.notice&&s.absDays<TRIGGERS.excl;});
+  var exc=students.filter(function(s){return s.absDays>=TRIGGERS.excl;});
+  var today=new Date().toLocaleDateString('ar-DZ',{year:'numeric',month:'long',day:'numeric',weekday:'long'});
+
+  var mkTable=function(list,title,color){
+    if(!list.length) return '';
+    return '<div style="margin-bottom:20px">'+
+      '<div style="background:'+color+';color:#fff;padding:6px 12px;font-weight:700;border-radius:6px 6px 0 0">'+title+' ('+list.length+')</div>'+
+      '<table style="width:100%;border-collapse:collapse;font-size:10px;border:1px solid '+color+'">'+
+      '<tr style="background:#f8faff;font-weight:700">'+
+        '<th style="padding:5px;border:1px solid #e2e8f0">رقم القيد</th>'+
+        '<th style="padding:5px;border:1px solid #e2e8f0">الاسم الكامل</th>'+
+        '<th style="padding:5px;border:1px solid #e2e8f0">المستوى/القسم</th>'+
+        '<th style="padding:5px;border:1px solid #e2e8f0">الغياب</th>'+
+        '<th style="padding:5px;border:1px solid #e2e8f0">الولي</th>'+
+        '<th style="padding:5px;border:1px solid #e2e8f0">الهاتف</th>'+
+      '</tr>'+
+      list.map(function(s){
+        return '<tr>'+
+          '<td style="padding:4px 5px;border:1px solid #e2e8f0">'+s.reg+'</td>'+
+          '<td style="padding:4px 5px;border:1px solid #e2e8f0;font-weight:600">'+s.ln+' '+s.fn+'</td>'+
+          '<td style="padding:4px 5px;border:1px solid #e2e8f0;text-align:center">'+s.level+'/'+s.cls+'</td>'+
+          '<td style="padding:4px 5px;border:1px solid #e2e8f0;text-align:center;font-weight:700;color:'+color+'">'+s.absDays+'</td>'+
+          '<td style="padding:4px 5px;border:1px solid #e2e8f0">'+s.guardian+'</td>'+
+          '<td style="padding:4px 5px;border:1px solid #e2e8f0;direction:ltr;text-align:left">'+s.phone+'</td>'+
+        '</tr>';
+      }).join('')+
+      '</table></div>';
+  };
+
+  var win=window.open('','_blank','width=1000,height=1100');
+  win.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">'+
+    '<title>الملخص اليومي — '+today+'</title>'+
+    '<style>*{box-sizing:border-box}body{font-family:Tahoma,sans-serif;direction:rtl;padding:16px;font-size:11px}'+
+    '.no-print{margin-bottom:12px} @media print{.no-print{display:none} @page{size:A4 landscape;margin:8mm}}</style>'+
+    '</head><body>'+
+    '<div class="no-print"><button onclick="window.print()" style="padding:9px 20px;background:#0D1F3C;color:#fff;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:700">🖨️ طباعة</button></div>'+
+    '<div style="text-align:center;border-bottom:2px solid #0D1F3C;padding-bottom:10px;margin-bottom:14px">'+
+      '<div style="font-size:11px">الجمهورية الجزائرية الديمقراطية الشعبية — وزارة التربية الوطنية</div>'+
+      '<div style="font-size:13px;font-weight:800;margin:4px 0">'+info.school+'</div>'+
+      '<div style="font-size:13px;font-weight:800">الملخص اليومي للغياب</div>'+
+      '<div style="font-size:11px;color:#666">'+today+'</div>'+
+    '</div>'+
+    '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;text-align:center">'+
+      '<div style="background:#FEF3C7;border-radius:8px;padding:10px"><div style="font-size:20px;font-weight:800;color:#D97706">'+w1.length+'</div><div style="font-size:10px">إشعار أول</div></div>'+
+      '<div style="background:#FEE2E2;border-radius:8px;padding:10px"><div style="font-size:20px;font-weight:800;color:#EA580C">'+w2.length+'</div><div style="font-size:10px">إشعار ثانٍ</div></div>'+
+      '<div style="background:#fee2e2;border-radius:8px;padding:10px"><div style="font-size:20px;font-weight:800;color:#DC2626">'+ntc.length+'</div><div style="font-size:10px">إعذار</div></div>'+
+      '<div style="background:#f1f5f9;border-radius:8px;padding:10px"><div style="font-size:20px;font-weight:800;color:#6B0000">'+exc.length+'</div><div style="font-size:10px">مقترح الشطب</div></div>'+
+    '</div>'+
+    mkTable(w1,'⚡ الإشعار الأول','#D97706')+
+    mkTable(w2,'⚠️ الإشعار الثاني','#EA580C')+
+    mkTable(ntc,'🚨 الإعذار','#DC2626')+
+    mkTable(exc,'❌ مقترح الشطب','#6B0000')+
+    '</body></html>');
+  win.document.close();
+}
+// ══ END FORM PRINTING ══
 
 window.onload = function() {
   // Load saved students first
