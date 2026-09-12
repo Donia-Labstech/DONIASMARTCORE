@@ -460,98 +460,41 @@ tr:hover td{background:#f8faff;}
   </div>
 </div>
 
-<script>
-// ══════════════════════════════════════════════════
-//   LICENSE SYSTEM v3 — SIMPLE READABLE KEYS
-//   Format: DSC-PLAN-YEAR-CODE
-//   Plans: B=برونزية, P=فضية, E=ذهبية, T=تجريبي
-//   Codes: DONIA / SMART / CORE (any year)
-//   Example: DSC-E-2027-DONIA
-// ══════════════════════════════════════════════════
-const LIC_KEY = 'dsc_v4';
-let currentLicense = null;
+<script>// ══ DONIA SMART CORE v3.0 — AUTO-ACTIVATE + EXCEL IMPORT ══
+const LIC_KEY='dsc_v4';
+let currentLicense={plan:'enterprise',expiry:'2099-12-31',maxStudents:9999,version:4};
 
-const VALID_CODES = ['DONIA','SMART','CORE','LABS','TECH'];
-const PLAN_MAP = {B:'basic', P:'pro', E:'enterprise', T:'trial'};
-const MAX_MAP  = {basic:200, pro:1000, enterprise:9999, trial:100};
+// License stubs (no screen shown)
+function parseLicKey(){return null;}
+function validateLic(){return true;}
+function selectPlan(){}
+function activateLicense(){showMainApp();}
+function activateTrial(){showMainApp();}
 
-function parseLicKey(raw) {
-  if (!raw) return null;
-  // Clean and normalize
-  const key = raw.trim().toUpperCase().replace(/\s/g,'');
-  // Accept DSC-PLAN-YEAR-CODE format
-  const m = key.match(/^DSC[-_]([BPET])[-_](\d{4})[-_]([A-Z]{4,6})$/);
-  if (!m) return null;
-  const plan = PLAN_MAP[m[1]];
-  if (!plan) return null;
-  const year = parseInt(m[2]);
-  if (!year || year < 2026 || year > 2035) return null;
-  if (!VALID_CODES.includes(m[3])) return null;
-  const expiry = year + '-12-31';
-  return { plan, expiry, maxStudents: MAX_MAP[plan], version: 4 };
-}
-
-function validateLic(lic) {
-  if (!lic || !lic.expiry || !lic.plan) return false;
-  return new Date(lic.expiry) >= new Date();
-}
-
-function activateLicense() {
-  const raw = document.getElementById('licKeyInput').value.trim();
-  const err = document.getElementById('licError');
-  if (!raw) { err.textContent = '⚠️ أدخل مفتاح الترخيص'; return; }
-  const lic = parseLicKey(raw);
-  if (!lic) {
-    err.textContent = '❌ مفتاح غير صحيح. الصيغة: DSC-E-2027-DONIA';
-    return;
-  }
-  if (!validateLic(lic)) {
-    err.textContent = '⏰ انتهت صلاحية المفتاح — جدّد اشتراكك';
-    return;
-  }
-  localStorage.setItem(LIC_KEY, JSON.stringify({...lic, at: Date.now()}));
-  currentLicense = lic;
-  err.textContent = '';
-  toast('✅ تم تفعيل الترخيص بنجاح — مرحباً بكم!');
+function checkLicense(){
+  currentLicense={plan:'enterprise',expiry:'2099-12-31',maxStudents:9999,version:4};
   showMainApp();
 }
 
-function activateTrial() {
-  const exp = new Date(Date.now() + 30*864e5).toISOString().split('T')[0];
-  const lic = {plan:'trial', expiry:exp, maxStudents:100, version:4, at:Date.now()};
-  localStorage.setItem(LIC_KEY, JSON.stringify(lic));
-  currentLicense = lic;
-  toast('🎁 النسخة التجريبية فعّالة 30 يوم — أهلاً وسهلاً!');
-  showMainApp();
+function showMainApp(){
+  const ls=document.getElementById('licScreen');
+  if(ls)ls.style.display='none';
+  const ah=document.getElementById('appHeader');
+  if(ah)ah.style.display='flex';
+  const sb=document.getElementById('sidebar');
+  if(sb)sb.style.display='flex';
+  const mc=document.getElementById('mainContent');
+  if(mc)mc.style.display='block';
+  const ln=document.getElementById('licName');
+  if(ln)ln.textContent='🥇 ذهبية';
+  const lp=document.getElementById('licPlan');
+  if(lp)lp.textContent='DONIA SMART CORE';
+  const le=document.getElementById('licExp');
+  if(le)le.textContent='نسخة العرض';
+  const hi=document.getElementById('hdrInst');
+  if(hi)hi.textContent='DONIA SMART CORE';
+  if(typeof go==='function')go('dashboard');
 }
-
-function showMainApp() {
-  document.getElementById('licScreen').style.display = 'none';
-  document.getElementById('appHeader').style.display = 'flex';
-  document.getElementById('sidebar').style.display = 'flex';
-  document.getElementById('mainContent').style.display = 'block';
-  const l = currentLicense || {};
-  const pn = {basic:'🥉 برونزية', pro:'🥈 فضية', enterprise:'🥇 ذهبية', trial:'🎁 تجريبي'};
-  document.getElementById('hdrInst').textContent = 'نسخة العرض — DONIA SMART CORE';
-  document.getElementById('licName').textContent = pn[l.plan] || '—';
-  document.getElementById('licPlan').textContent = (l.plan==='enterprise'?'غير محدود':l.maxStudents+' طالب');
-  document.getElementById('licExp').textContent = 'ينتهي: ' + (l.expiry||'—');
-  go('dashboard');
-}
-
-function checkLicense() {
-  // DEMO VERSION: open directly, no license required
-  currentLicense = {plan:'enterprise', expiry:'2099-12-31', maxStudents:9999, version:4};
-  showMainApp();
-}
-
-function selectPlan(el, plan) {
-  document.querySelectorAll('.lic-plan').forEach(p => p.classList.remove('active'));
-  el.classList.add('active');
-}
-
-// ══ AUTO-ACTIVATE ══
-window.currentLicense = {plan:'enterprise', expiry:'2099-12-31', maxStudents:9999, version:4};
 
 // ══ PERSISTENCE ══
 function saveStudents() {
@@ -1196,161 +1139,62 @@ function closeIDC(){document.getElementById('idcModal').style.display='none';}
 function printOneCard(){
   const s=students.find(x=>x.id===previewStudId);
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>body{margin:20px;font-family:Tahoma,Arial,sans-serif;background:#fff;}.idc{border-radius:14px;overflow:hidden;border:1px solid #ccc;width:340px;}.idc-hdr{background:#0D1F3C;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;}.idc-flag{display:flex;height:4px;}.idc-body{background:#f8fafb;padding:13px 14px;}.idc-ftr{background:#0D1F3C;color:rgba(255,255,255,.45);padding:6px 14px;display:flex;justify-content:space-between;font-size:8px;}</style></head><body>${idCardHTML(s,true)}
-<!-- ══ EXCEL IMPORT MODAL ══ -->
-<div class="movl" id="excelModal" style="display:none">
-  <div class="mbox" style="max-width:700px">
-    <div class="mhdr">
-      <div class="mtitle">📥 استيراد الطلاب من Excel</div>
-      <button class="mclose" onclick="closeExcelModal()">✕</button>
-    </div>
-    <div id="excelStep1">
-      <div style="border:2px dashed rgba(0,166,81,.4);border-radius:12px;padding:32px;text-align:center;background:rgba(0,166,81,.04);cursor:pointer" onclick="document.getElementById('excelFile').click()" ondragover="event.preventDefault()" ondrop="handleExcelDrop(event)">
-        <div style="font-size:48px;margin-bottom:12px">📊</div>
-        <div style="font-size:15px;font-weight:700;color:var(--n);margin-bottom:6px">اسحب ملف Excel هنا أو انقر للاختيار</div>
-        <div style="font-size:12px;color:#64748b">يدعم: .xlsx · .xls · .csv — أي عدد من الطلاب</div>
-        <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelFile(event)">
-      </div>
-      <div style="margin-top:16px;background:#f8faff;border-radius:10px;padding:14px">
-        <div style="font-size:12px;font-weight:700;color:var(--n);margin-bottom:8px">📋 الأعمدة المدعومة في Excel:</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:11px;color:#64748b">
-          <span>• الاسم / Prénom</span><span>• اللقب / Nom</span><span>• NIN / الرقم التعريفي</span>
-          <span>• رقم التسجيل / Matricule</span><span>• المستوى / Niveau</span><span>• القسم / Classe</span>
-          <span>• اسم الولي / Tuteur</span><span>• الهاتف / Téléphone</span><span>• العنوان / Adresse</span>
-        </div>
-      </div>
-    </div>
-    <div id="excelStep2" style="display:none">
-      <div style="background:#f0fdf4;border:1px solid rgba(0,166,81,.25);border-radius:10px;padding:12px 16px;margin-bottom:14px">
-        <span id="excelFileInfo" style="font-size:13px;font-weight:700;color:#166534"></span>
-      </div>
-      <div style="font-size:12px;font-weight:700;color:var(--n);margin-bottom:10px">🗂️ ربط أعمدة Excel بحقول النظام:</div>
-      <div id="colMapping" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"></div>
-      <div style="margin-bottom:14px">
-        <div style="font-size:12px;font-weight:700;color:var(--n);margin-bottom:6px">👁️ معاينة أول 5 صفوف:</div>
-        <div style="overflow-x:auto"><table id="previewTable" style="width:100%;font-size:11px;border-collapse:collapse"></table></div>
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn bo" onclick="resetExcelImport()">← رجوع</button>
-        <button class="btn bg" id="importBtn" onclick="doImport()">✅ استيراد الطلاب</button>
-      </div>
-    </div>
-    <div id="excelStep3" style="display:none;text-align:center;padding:24px">
-      <div style="font-size:48px;margin-bottom:12px">✅</div>
-      <div style="font-size:18px;font-weight:800;color:var(--n);margin-bottom:8px" id="importResult"></div>
-      <div style="font-size:13px;color:#64748b;margin-bottom:20px" id="importDetails"></div>
-      <button class="btn bg" onclick="closeExcelModal();go('students')">👥 عرض الطلاب</button>
-    </div>
-  </div>
-</div>
-</body></html>`);
-  w.document.close();setTimeout(()=>w.print(),500);
-}
+  w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>body{margin:20px;font-family:Tahoma,Arial,sans-serif;background:#fff;}.idc{border-radius:14px;overflow:hidden;border:1px solid #ccc;width:340px;}.idc-hdr{background:#0D1F3C;color:#fff;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;}.idc-flag{display:flex;height:4px;}.idc-body{background:#f8fafb;padding:13px 14px;}.idc-ftr{background:#0D1F3C;color:rgba(255,255,255,.45);padding:6px 14px;display:flex;justify-content:space-between;font-size:8px;}</style></head><body>${idCardHTML(s,true)}</body></html>\`);w.document.close();setTimeout(()=>w.print(),500);}
 function printAllCards(){
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>body{margin:8px;font-family:Tahoma,Arial,sans-serif;background:#fff;}.idc{border-radius:10px;overflow:hidden;border:1px solid #ccc;break-inside:avoid;margin:5px;}.idc-hdr{background:#0D1F3C;color:#fff;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;}.idc-flag{display:flex;height:3px;}.idc-body{background:#f8fafb;padding:10px 12px;}.idc-ftr{background:#0D1F3C;color:rgba(255,255,255,.45);padding:4px 12px;display:flex;justify-content:space-between;font-size:7px;}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}</style></head><body><div class="grid">${students.map(s=>idCardHTML(s)).join('')}</div>
-<!-- ══ EXCEL IMPORT MODAL ══ -->
-<div class="movl" id="excelModal" style="display:none">
-  <div class="mbox" style="max-width:700px">
-    <div class="mhdr">
-      <div class="mtitle">📥 استيراد الطلاب من Excel</div>
-      <button class="mclose" onclick="closeExcelModal()">✕</button>
-    </div>
-    <div id="excelStep1">
-      <div style="border:2px dashed rgba(0,166,81,.4);border-radius:12px;padding:32px;text-align:center;background:rgba(0,166,81,.04);cursor:pointer" onclick="document.getElementById('excelFile').click()" ondragover="event.preventDefault()" ondrop="handleExcelDrop(event)">
-        <div style="font-size:48px;margin-bottom:12px">📊</div>
-        <div style="font-size:15px;font-weight:700;color:var(--n);margin-bottom:6px">اسحب ملف Excel هنا أو انقر للاختيار</div>
-        <div style="font-size:12px;color:#64748b">يدعم: .xlsx · .xls · .csv — أي عدد من الطلاب</div>
-        <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleExcelFile(event)">
-      </div>
-      <div style="margin-top:16px;background:#f8faff;border-radius:10px;padding:14px">
-        <div style="font-size:12px;font-weight:700;color:var(--n);margin-bottom:8px">📋 الأعمدة المدعومة في Excel:</div>
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:11px;color:#64748b">
-          <span>• الاسم / Prénom</span><span>• اللقب / Nom</span><span>• NIN / الرقم التعريفي</span>
-          <span>• رقم التسجيل / Matricule</span><span>• المستوى / Niveau</span><span>• القسم / Classe</span>
-          <span>• اسم الولي / Tuteur</span><span>• الهاتف / Téléphone</span><span>• العنوان / Adresse</span>
-        </div>
-      </div>
-    </div>
-    <div id="excelStep2" style="display:none">
-      <div style="background:#f0fdf4;border:1px solid rgba(0,166,81,.25);border-radius:10px;padding:12px 16px;margin-bottom:14px">
-        <span id="excelFileInfo" style="font-size:13px;font-weight:700;color:#166534"></span>
-      </div>
-      <div style="font-size:12px;font-weight:700;color:var(--n);margin-bottom:10px">🗂️ ربط أعمدة Excel بحقول النظام:</div>
-      <div id="colMapping" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px"></div>
-      <div style="margin-bottom:14px">
-        <div style="font-size:12px;font-weight:700;color:var(--n);margin-bottom:6px">👁️ معاينة أول 5 صفوف:</div>
-        <div style="overflow-x:auto"><table id="previewTable" style="width:100%;font-size:11px;border-collapse:collapse"></table></div>
-      </div>
-      <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn bo" onclick="resetExcelImport()">← رجوع</button>
-        <button class="btn bg" id="importBtn" onclick="doImport()">✅ استيراد الطلاب</button>
-      </div>
-    </div>
-    <div id="excelStep3" style="display:none;text-align:center;padding:24px">
-      <div style="font-size:48px;margin-bottom:12px">✅</div>
-      <div style="font-size:18px;font-weight:800;color:var(--n);margin-bottom:8px" id="importResult"></div>
-      <div style="font-size:13px;color:#64748b;margin-bottom:20px" id="importDetails"></div>
-      <button class="btn bg" onclick="closeExcelModal();go('students')">👥 عرض الطلاب</button>
-    </div>
-  </div>
-</div>
-</body></html>`);
+  w.document.write(\`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><style>body{margin:8px;font-family:Tahoma,Arial,sans-serif;background:#fff;}.idc{border-radius:10px;overflow:hidden;border:1px solid #ccc;break-inside:avoid;margin:5px;}.idc-hdr{background:#0D1F3C;color:#fff;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;}.idc-flag{display:flex;height:3px;}.idc-body{background:#f8fafb;padding:10px 12px;}.idc-ftr{background:#0D1F3C;color:rgba(255,255,255,.45);padding:4px 12px;display:flex;justify-content:space-between;font-size:7px;}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}</style></head><body><div class="grid">\${students.map(s=>idCardHTML(s)).join('')}</div></body></html>\`);
   w.document.close();setTimeout(()=>w.print(),600);
 }
+function captureAllCards(){toast('📷 جاري تجهيز التصوير...');}
 
 // ══ ABSENCE ══════════════════════════════════════
 let absFilter='all';
 function renderAbsence(){
   const fBtns=[['all','الكل','#0D1F3C'],['early','< 4 أيام','#0891b2'],['warn1','إشعار ١','#F59E0B'],['warn2','إشعار ٢','#F97316'],['notice','إعذار','#EF4444'],['excl','شطب','#7F1D1D']];
   const shown=students.filter(s=>{if(s.absDays===0)return false;if(absFilter==='all')return true;return getStatus(s.absDays).key===absFilter;});
-  return`
-  <div class="shdr"><div class="stitle">📋 سجل الغياب والمحرك القانوني</div></div>
-  <div class="lbanner">
+  return\`<div class="shdr"><div class="stitle">📋 سجل الغياب والمحرك القانوني</div></div>
+  <div class="lbanner" style="margin-bottom:16px">
     <div style="font-size:13px;color:#C8A84B;font-weight:bold;margin-bottom:12px">⚖️ الجدول الزمني القانوني التلقائي</div>
     <div class="lsteps">
-      ${[['1-3','مراقبة','🔵','#0891b2'],[`${TRIGGERS.w1}`,'إشعار ١','📧','#F59E0B'],[`${TRIGGERS.w2}`,'إشعار ٢','⚠️','#F97316'],[`${TRIGGERS.notice}`,'إعذار PDF','📄','#EF4444'],[`${TRIGGERS.excl}`,'شطب','🚫','#7F1D1D']].map(([d,lb,ic,cl])=>
-        `<div class="lstep"><div style="font-size:20px">${ic}</div><div style="font-size:10px;font-weight:bold;color:${cl};margin-top:3px">يوم ${d}</div><div style="font-size:10px;color:rgba(255,255,255,.8)">${lb}</div></div>`).join('')}
+      \${[['1-3','مراقبة','🔵','#0891b2'],[\`\${TRIGGERS.w1}\`,'إشعار ١','📧','#F59E0B'],[\`\${TRIGGERS.w2}\`,'إشعار ٢','⚠️','#F97316'],[\`\${TRIGGERS.notice}\`,'إعذار PDF','📄','#EF4444'],[\`\${TRIGGERS.excl}\`,'شطب','🚫','#7F1D1D']].map(([d,lb,ic,cl])=>
+        \`<div class="lstep"><div style="font-size:20px">\${ic}</div><div style="font-size:10px;font-weight:bold;color:\${cl};margin-top:3px">يوم \${d}</div><div style="font-size:10px;color:rgba(255,255,255,.8)">\${lb}</div></div>\`).join('')}
     </div>
   </div>
   <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
-    ${fBtns.map(([k,lb,cl])=>`<button onclick="absFilter='${k}';reAbsBody()" style="padding:6px 14px;border-radius:20px;border:2px solid ${cl};cursor:pointer;font-size:11px;font-family:inherit;font-weight:700;transition:all .2s;background:${absFilter===k?cl:'white'};color:${absFilter===k?'white':cl}">${lb}</button>`).join('')}
+    \${fBtns.map(([k,lb,cl])=>\`<button onclick="absFilter='\${k}';reAbsBody()" style="padding:6px 14px;border-radius:20px;border:2px solid \${cl};cursor:pointer;font-size:11px;font-family:inherit;font-weight:700;transition:all .2s;background:\${absFilter===k?cl:'white'};color:\${absFilter===k?'white':cl}">\${lb}</button>\`).join('')}
   </div>
-  <div class="card" id="absBody">${shown.length?shown.map(absRow).join(''):'<p style="text-align:center;color:#94a3b8;padding:28px">لا توجد سجلات</p>'}</div>`;
+  <div class="card" id="absBody">\${shown.length?shown.map(absRow).join(''):'<p style="text-align:center;color:#94a3b8;padding:28px">لا توجد سجلات</p>'}</div>\`;
 }
 function absRow(s){const st=getStatus(s.absDays);const acts=[{t:1,lb:'إشعار ١',cl:'#F59E0B',show:s.absDays>=TRIGGERS.w1},{t:2,lb:'إشعار ٢',cl:'#F97316',show:s.absDays>=TRIGGERS.w2},{t:3,lb:'إعذار PDF',cl:'#EF4444',show:s.absDays>=TRIGGERS.notice},{t:4,lb:'قائمة شطب',cl:'#7F1D1D',show:s.absDays>=TRIGGERS.excl}].filter(a=>a.show);
-return`<div class="alrt" style="background:${st.bg};border-color:${st.color}25">
+return\`<div class="alrt" style="background:\${st.bg};border-color:\${st.color}25">
   <div style="display:flex;align-items:center;gap:12px">
-    ${s.photo?`<img src="${s.photo}" class="ava" style="object-fit:cover">`:`<div class="ava" style="background:${st.color}">${s.fn[0]}</div>`}
-    <div>
-      <div style="font-weight:700;font-size:15px;color:var(--n)">${s.fn} ${s.ln}</div>
-      <div style="font-size:11px;color:#64748b">${s.level} / ${s.cls} — ر.ت.و: ${s.nin}</div>
-      <div style="font-size:11px;color:#94a3b8">${s.guardian} | ${s.phone}</div>
-    </div>
+    \${s.photo?\`<img src="\${s.photo}" class="ava" style="object-fit:cover">\`:\`<div class="ava" style="background:\${st.color}">\${s.fn[0]}</div>\`}
+    <div><div style="font-weight:700;font-size:15px;color:var(--n)">\${s.fn} \${s.ln}</div>
+    <div style="font-size:11px;color:#64748b">\${s.level} / \${s.cls} — ر.ت.و: \${s.nin}</div>
+    <div style="font-size:11px;color:#94a3b8">\${s.guardian} | \${s.phone}</div></div>
   </div>
   <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">
     <div style="display:flex;align-items:center;gap:10px">
-      <div style="text-align:center"><div style="font-size:30px;font-weight:800;color:${st.color};line-height:1">${s.absDays}</div><div style="font-size:9px;color:#94a3b8">يوم</div></div>
-      ${stag(s.absDays)}
+      <div style="text-align:center"><div style="font-size:30px;font-weight:800;color:\${st.color};line-height:1">\${s.absDays}</div><div style="font-size:9px;color:#94a3b8">يوم</div></div>
+      \${stag(s.absDays)}
     </div>
     <div style="display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end">
-      ${acts.map(a=>`<button class="btn bsm" style="background:${a.cl};color:#fff" onclick="fireAction(${s.id},${a.t})">${a.lb}</button>`).join('')}
+      \${acts.map(a=>\`<button class="btn bsm" style="background:\${a.cl};color:#fff" onclick="fireAction(\${s.id},\${a.t})">\${a.lb}</button>\`).join('')}
     </div>
     <div style="display:flex;align-items:center;gap:7px;font-size:11px;color:#64748b">
-      أيام:<input type="number" min="0" value="${s.absDays}" style="width:56px;padding:4px 8px;border-radius:6px;border:1.5px solid #e2e8f0;font-size:12px;text-align:center;font-family:inherit" onchange="updateAbs(${s.id},this.value)">
+      أيام:<input type="number" min="0" value="\${s.absDays}" style="width:56px;padding:4px 8px;border-radius:6px;border:1.5px solid #e2e8f0;font-size:12px;text-align:center;font-family:inherit" onchange="updateAbs(\${s.id},this.value)">
     </div>
   </div>
-</div>`;}
+</div>\`;}
 function reAbsBody(){const body=document.getElementById('absBody');const shown=students.filter(s=>{if(s.absDays===0)return false;if(absFilter==='all')return true;return getStatus(s.absDays).key===absFilter;});if(body)body.innerHTML=shown.length?shown.map(absRow).join(''):'<p style="text-align:center;color:#94a3b8;padding:28px">لا توجد سجلات</p>';}
-function updateAbs(id,val){const s=students.find(x=>x.id===id);if(s){s.absDays=parseInt(val)||0;updateHdrStats();}}
-function fireAction(id,t){const s=students.find(x=>x.id===id);const msgs={1:`📧 إشعار أول → ${s.guardian}`,2:`⚠️ إشعار ثانٍ → ${s.guardian}`,3:`📄 إعذار PDF جاهز للطباعة`,4:`🚫 إدراج في قائمة الشطب`};toast(msgs[t]);}
+function updateAbs(id,val){const s=students.find(x=>x.id===id);if(s){s.absDays=parseInt(val)||0;saveStudents();updateHdrStats();}}
+function fireAction(id,t){const s=students.find(x=>x.id===id);const msgs={1:\`📧 إشعار أول → \${s.guardian}\`,2:\`⚠️ إشعار ثانٍ → \${s.guardian}\`,3:\`📄 إعذار PDF جاهز للطباعة\`,4:\`🚫 إدراج في قائمة الشطب\`};toast(msgs[t]);}
 function toggleHoliday(){excludeHolidays=!excludeHolidays;const t=document.getElementById('holTgl');t.classList.toggle('on',excludeHolidays);toast(excludeHolidays?'✅ أيام العطل مستثناة':'⚠️ كل الأيام تُحسب',excludeHolidays?'#16a34a':'#F59E0B');}
 
 // ══ REPORTS ══════════════════════════════════════
 function renderReports(){
   const rows=students;
-  return`
-  <div class="shdr"><div class="stitle">📊 التقارير الإدارية</div>
+  return\`<div class="shdr"><div class="stitle">📊 التقارير الإدارية</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button class="btn bn bo" onclick="toast('📥 Excel...')">📥 Excel</button>
       <button class="btn br" onclick="toast('📄 PDF...')">📄 PDF</button>
@@ -1358,95 +1202,62 @@ function renderReports(){
     </div>
   </div>
   <div class="g3" style="margin-bottom:18px">
-    ${[['الإجمالي',students.length,'#0D1F3C'],['حاضرون',students.filter(s=>s.absDays===0).length,'#00A651'],['إشعار+',students.filter(s=>s.absDays>=TRIGGERS.w1).length,'#F59E0B'],['إعذار+',students.filter(s=>s.absDays>=TRIGGERS.notice).length,'#EF4444'],['للشطب',students.filter(s=>s.absDays>=TRIGGERS.excl).length,'#7F1D1D'],['سجّلوا اليوم',attendanceLog.filter(r=>r.date===today()).length,'#3b82f6']].map(([lb,vl,cl])=>
-      `<div class="card" style="padding:14px 16px;border-right:4px solid ${cl};display:flex;justify-content:space-between;align-items:center">
-        <span style="font-size:12px;color:#64748b">${lb}</span>
-        <span style="font-size:28px;font-weight:800;color:${cl}">${vl}</span>
-      </div>`).join('')}
+    \${[['الإجمالي',students.length,'#0D1F3C'],['حاضرون',students.filter(s=>s.absDays===0).length,'#00A651'],['إشعار+',students.filter(s=>s.absDays>=TRIGGERS.w1).length,'#F59E0B'],['إعذار+',students.filter(s=>s.absDays>=TRIGGERS.notice).length,'#EF4444'],['للشطب',students.filter(s=>s.absDays>=TRIGGERS.excl).length,'#7F1D1D'],['سجّلوا اليوم',attendanceLog.filter(r=>r.date===today()).length,'#3b82f6']].map(([lb,vl,cl])=>
+      \`<div class="card" style="padding:14px 16px;border-right:4px solid \${cl};display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:#64748b">\${lb}</span>
+        <span style="font-size:28px;font-weight:800;color:\${cl}">\${vl}</span>
+      </div>\`).join('')}
   </div>
   <div class="card">
     <div class="twrap">
       <table>
         <thead><tr><th>#</th><th>الصورة</th><th>الاسم</th><th>المستوى</th><th>NIN</th><th>الغياب</th><th>الولي</th><th>الهاتف</th><th>الحالة</th></tr></thead>
-        <tbody>${rows.map((s,i)=>`<tr>
-          <td style="color:#94a3b8">${i+1}</td>
-          <td><div style="width:30px;height:30px;border-radius:50%;overflow:hidden;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:16px">${s.photo?`<img src="${s.photo}" style="width:100%;height:100%;object-fit:cover">`:'👤'}</div></td>
-          <td style="font-weight:700;color:var(--n)">${s.fn} ${s.ln}</td>
-          <td>${s.level}</td>
-          <td style="font-family:monospace;font-size:10px">${s.nin}</td>
-          <td style="text-align:center;font-weight:700;color:${s.absDays>0?'#E8192C':'#16a34a'}">${s.absDays}</td>
-          <td>${s.guardian}</td>
-          <td style="direction:ltr;font-size:11px">${s.phone}</td>
-          <td>${stag(s.absDays)}</td>
-        </tr>`).join('')}</tbody>
+        <tbody>\${rows.map((s,i)=>\`<tr>
+          <td style="color:#94a3b8">\${i+1}</td>
+          <td><div style="width:30px;height:30px;border-radius:50%;overflow:hidden;background:#f1f5f9;display:flex;align-items:center;justify-content:center;font-size:16px">\${s.photo?\`<img src="\${s.photo}" style="width:100%;height:100%;object-fit:cover">\`:'👤'}</div></td>
+          <td style="font-weight:700;color:var(--n)">\${s.fn} \${s.ln}</td>
+          <td>\${s.level}</td>
+          <td style="font-family:monospace;font-size:10px">\${s.nin}</td>
+          <td style="text-align:center;font-weight:700;color:\${s.absDays>0?'#E8192C':'#16a34a'}">\${s.absDays}</td>
+          <td>\${s.guardian}</td>
+          <td style="direction:ltr;font-size:11px">\${s.phone}</td>
+          <td>\${stag(s.absDays)}</td>
+        </tr>\`).join('')}</tbody>
       </table>
     </div>
-  </div>`;
-}
+  </div>\`;}
 
 // ══ SETTINGS ═════════════════════════════════════
-function renderSettings(){return`
+function renderSettings(){return\`
   <div class="shdr"><div class="stitle">⚙️ الإعدادات</div></div>
   <div class="g2">
     <div class="card"><h3 style="color:var(--n);font-size:15px;font-weight:700;margin-bottom:14px">🏫 معلومات المؤسسة</h3>
-      ${[['اسم المؤسسة',currentLicense?.institution||''],['رمز المؤسسة','DSC-2024'],['المديرية','مديرية التربية'],['الولاية','الجلفة']].map(([lb,val])=>`<div class="fg"><label>${lb}</label><input class="fc" value="${val}"></div>`).join('')}
+      \${[['اسم المؤسسة','متوسطة الشهيد بوضريسة محمد'],['رمز المؤسسة','DSC-2026'],['المديرية','مديرية التربية'],['الولاية','الجلفة']].map(([lb,val])=>\`<div class="fg"><label>\${lb}</label><input class="fc" value="\${val}"></div>\`).join('')}
       <button class="btn bg" onclick="toast('✅ تم الحفظ')">💾 حفظ</button>
-    </div>
-    <div class="card"><h3 style="color:var(--n);font-size:15px;font-weight:700;margin-bottom:14px">🔑 معلومات الترخيص</h3>
-      <div style="padding:14px;background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-radius:10px;margin-bottom:14px">
-        <div style="font-size:12px;color:#166534;font-weight:700">${currentLicense?.institution||'—'}</div>
-        <div style="font-size:11px;color:#4ade80;margin-top:3px">خطة: ${{basic:'أساسي',pro:'احترافي',enterprise:'مؤسسي',trial:'تجريبية'}[currentLicense?.plan]||'—'}</div>
-        <div style="font-size:11px;color:#86efac;margin-top:2px">يصدر: ${currentLicense?.expiry||'—'}</div>
-        <div style="font-size:11px;color:#86efac">حد الطلاب: ${currentLicense?.maxStudents||'—'}</div>
-      </div>
-      <button class="btn bn bo" onclick="if(confirm('تجديد الترخيص؟')){localStorage.removeItem('${LIC_KEY}');location.reload()}">🔄 تجديد / تغيير الترخيص</button>
-      <div style="margin-top:12px;font-size:11px;color:#64748b">للدعم والتجديد: <a href="https://donialabstech.online/" target="_blank">donialabstech.online</a></div>
     </div>
     <div class="card"><h3 style="color:var(--n);font-size:15px;font-weight:700;margin-bottom:14px">⏱️ الجدول الزمني القانوني</h3>
-      ${[['Trigger 1 — إشعار أول','w1','#F59E0B'],['Trigger 2 — إشعار ثانٍ','w2','#F97316'],['Trigger 3 — إعذار','notice','#EF4444'],['Trigger 4 — الشطب','excl','#7F1D1D']].map(([lb,k,cl])=>
-        `<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid ${cl}30;background:${cl}08;margin-bottom:8px">
-          <span style="font-size:12px;color:#444">${lb}</span>
+      \${[['Trigger 1 — إشعار أول','w1','#F59E0B'],['Trigger 2 — إشعار ثانٍ','w2','#F97316'],['Trigger 3 — إعذار','notice','#EF4444'],['Trigger 4 — الشطب','excl','#7F1D1D']].map(([lb,k,cl])=>
+        \`<div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;border-radius:8px;border:1.5px solid \${cl}30;background:\${cl}08;margin-bottom:8px">
+          <span style="font-size:12px;color:#444">\${lb}</span>
           <div style="display:flex;align-items:center;gap:6px"><span style="font-size:11px;color:#64748b">يوم</span>
-          <input type="number" value="${TRIGGERS[k]}" onchange="TRIGGERS.${k}=parseInt(this.value)" style="width:52px;padding:4px 8px;border-radius:6px;border:1.5px solid #e2e8f0;font-size:12px;text-align:center;font-family:inherit"></div>
-        </div>`).join('')}
+          <input type="number" value="\${TRIGGERS[k]}" onchange="TRIGGERS.\${k}=parseInt(this.value)" style="width:52px;padding:4px 8px;border-radius:6px;border:1.5px solid #e2e8f0;font-size:12px;text-align:center;font-family:inherit"></div>
+        </div>\`).join('')}
       <button class="btn bg" onclick="toast('✅ تم حفظ الإعدادات')">💾 حفظ</button>
     </div>
-    <div class="card"><h3 style="color:var(--n);font-size:15px;font-weight:700;margin-bottom:14px">📱 WhatsApp & Email</h3>
-      ${[['رقم WhatsApp Business','213XXXXXXXXX'],['رمز الوصول API','EAAxxxxxxx'],['قالب الإشعار','absence_notification'],['SMTP Host','smtp.gmail.com'],['SMTP Port','587'],['البريد الإلكتروني','school@gmail.com']].map(([lb])=>`<div class="fg"><label>${lb}</label><input class="fc" placeholder="${lb}..."></div>`).join('')}
-      <button class="btn bg" onclick="toast('✅ تم الحفظ')">💾 حفظ</button>
-    </div>
-  </div>`;}
+  </div>\`;}
 
 // ══ MANUAL ═══════════════════════════════════════
-function renderManual(){return`
-<div class="shdr"><div class="stitle">📖 دليل الاستخدام</div><button class="btn bn" onclick="window.print()">🖨️ طباعة</button></div>
-<div class="card msec"><h3>🏢 عن DONIA SMART CORE</h3>
-<p>DONIA SMART CORE هو نظام إدارة مدرسية متكامل مطوَّر من <strong>DONIA LABS TECH</strong> (<a href="https://donialabstech.online/" target="_blank">donialabstech.online</a>). يتميز بنظام ترخيص مؤسسي، حضور رقمي بالبطاقة والبصمة، ومحرك قانوني تلقائي يتابع الغياب بدقة.</p>
-<div class="tip">✅ يعمل على: Windows · macOS · Linux · Android · iOS — بدون تثبيت</div></div>
-<div class="card msec"><h3>🕐 نظام الحضور والانصراف الرقمي</h3>
-<h4>طرق التسجيل:</h4><ul>
-<li><strong>🪪 مسح البطاقة:</strong> وجّه الكاميرا نحو QR Code على البطاقة المدرسية — يُسجَّل الحضور تلقائياً</li>
-<li><strong>☝️ البصمة:</strong> انقر "مسح البصمة" ← المتصفح يفتح حساس البصمة ← اختر الطالب ← سجّل</li>
-<li><strong>⌨️ يدوي:</strong> أدخل رقم التسجيل أو NIN في حقل البحث ← دخول/خروج</li>
-</ul>
-<div class="tip">💡 الأزرار الخضراء ▶ دخول — الحمراء ◀ انصراف</div></div>
-<div class="card msec"><h3>🔑 نظام الترخيص</h3>
-<ul>
-<li>المفتاح بصيغة: <code>DSC-XXXX-XXXX-XXXX</code></li>
-<li>خطط: أساسي (5000 دج) · احترافي (12000 دج) · مؤسسي (25000 دج)</li>
-<li>النسخة التجريبية: 30 يوماً مجاناً بدون مفتاح</li>
-<li>الشراء والتجديد: <a href="https://donialabstech.online/" target="_blank">donialabstech.online</a></li>
-</ul></div>
-<div class="card msec"><h3>📚 المكتبات المستخدمة</h3>
-<div class="lib-row"><div><div class="lib-name">Chart.js v4.4.1</div><div style="font-size:11px;color:#64748b">الرسوم البيانية</div></div><div><span class="lib-badge">CDN</span></div></div>
-<div class="lib-row"><div><div class="lib-name">MediaDevices API + BarcodeDetector</div><div style="font-size:11px;color:#64748b">الكاميرا + مسح QR</div></div><div><span class="lib-badge">Built-in</span></div></div>
-<div class="lib-row"><div><div class="lib-name">Web Authentication API (WebAuthn)</div><div style="font-size:11px;color:#64748b">البصمة والمصادقة البيومترية</div></div><div><span class="lib-badge">W3C</span></div></div>
-<div class="lib-row"><div><div class="lib-name">Canvas API + FileReader</div><div style="font-size:11px;color:#64748b">معالجة ورفع الصور</div></div><div><span class="lib-badge">HTML5</span></div></div>
-<div class="lib-row"><div><div class="lib-name">Vanilla JavaScript ES2020</div><div style="font-size:11px;color:#64748b">كامل المنطق بدون إطار عمل</div></div><div><span class="lib-badge">ES2020</span></div></div>
-<div class="lib-row"><div><div class="lib-name">CSS Grid + Flexbox + Custom Properties</div><div style="font-size:11px;color:#64748b">التصميم المتجاوب</div></div><div><span class="lib-badge">CSS3</span></div></div>
-<div class="lib-row"><div><div class="lib-name">localStorage API</div><div style="font-size:11px;color:#64748b">حفظ الترخيص محلياً</div></div><div><span class="lib-badge">Web API</span></div></div>
-</div>
-<div class="app-footer">DONIA SMART CORE — Powered by <a href="https://donialabstech.online/" target="_blank">DONIA LABS TECH</a> © 2026</div>`;}
+function renderManual(){return\`
+<div class="shdr"><div class="stitle">📖 دليل الاستخدام</div></div>
+<div class="card"><p style="font-size:13px;line-height:1.9;color:#475569">
+<strong>DONIA SMART CORE v3.0</strong> — نظام إدارة مدرسية ذكي من <a href="https://donialabstech.online/" target="_blank" style="color:var(--g)">DONIA LABS TECH</a>.<br><br>
+<strong>🕐 الحضور:</strong> مسح QR أو بصمة أو إدخال يدوي<br>
+<strong>👥 الطلاب:</strong> إضافة/تعديل + استيراد من Excel<br>
+<strong>📋 الغياب:</strong> محرك قانوني تلقائي (4 triggers)<br>
+<strong>🪪 البطاقات:</strong> NIN + QR + صورة + طباعة<br>
+<strong>📊 التقارير:</strong> يومي/أسبوعي/شهري<br><br>
+للدعم: <a href="https://wa.me/213674661737" target="_blank" style="color:#25D366">💬 +213 674 661 737</a>
+</p></div>\`;}
 
 // ══ RENDER ═══════════════════════════════════════
 function render(){
@@ -1464,18 +1275,217 @@ function render(){
   updateHdrStats();
 }
 
-// ══ INIT ═════════════════════════════════════════
-
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js')
-    .then(r => console.log('SW registered'))
-    .catch(e => console.log('SW error', e));
+// ══ EXCEL IMPORT ══
+var exData=[],exHeaders=[];
+var FMAP={fn:['الاسم','اسم','prenom'],ln:['اللقب','لقب','nom'],nin:['nin','تعريف'],reg:['تسجيل','matricule'],level:['مستوى','niveau'],cls:['قسم','classe'],guardian:['ولي','tuteur'],phone:['هاتف','telephone','tel'],email:['بريد','email'],addr:['عنوان','adresse']};
+var FLABELS={fn:'الاسم *',ln:'اللقب *',nin:'NIN',reg:'رقم التسجيل',level:'المستوى',cls:'القسم',guardian:'الولي',phone:'الهاتف',email:'البريد',addr:'العنوان'};
+function openExcelImport(){document.getElementById('excelModal').style.display='flex';}
+function closeExcelModal(){document.getElementById('excelModal').style.display='none';exReset();}
+function exReset(){['exStep1','exStep2','exStep3'].forEach(function(id,i){document.getElementById(id).style.display=i===0?'block':'none';});document.getElementById('exFile').value='';exData=[];exHeaders=[];}
+function exDrop(e){e.preventDefault();var f=e.dataTransfer.files[0];if(f)exProcess(f);}
+function exFileChg(e){var f=e.target.files[0];if(f)exProcess(f);}
+function exProcess(file){
+  if(typeof XLSX==='undefined'){toast('⏳ تحميل مكتبة Excel...','#F59E0B');setTimeout(function(){exProcess(file);},2000);return;}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array'});
+      var rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});
+      if(!rows||rows.length<2){toast('⚠️ الملف فارغ','#F59E0B');return;}
+      var hi=0;for(var i=0;i<Math.min(5,rows.length);i++){if(rows[i].some(function(c){return c&&String(c).trim();})){hi=i;break;}}
+      exHeaders=rows[hi].map(function(h){return String(h||'').trim();});
+      exData=rows.slice(hi+1).filter(function(r){return r.some(function(c){return c&&String(c).trim();});});
+      document.getElementById('exInfo').textContent='✅ '+file.name+' — '+exData.length+' طالب';
+      exBuildMap();exBuildPreview();
+      document.getElementById('exStep1').style.display='none';document.getElementById('exStep2').style.display='block';
+    }catch(err){toast('❌ '+err.message,'#E8192C');}
+  };
+  reader.readAsArrayBuffer(file);
 }
-window.onload=()=>{
-  loadStudents(); // Load saved students from localStorage
+function exDetect(h){
+  var hh=String(h).toLowerCase().trim();
+  var keys=Object.keys(FMAP);
+  for(var i=0;i<keys.length;i++){var f=keys[i];var ps=FMAP[f];for(var j=0;j<ps.length;j++){if(hh.indexOf(ps[j])>=0)return f;}}
+  return '';
+}
+function exBuildMap(){
+  var fields=['fn','ln','nin','reg','level','cls','guardian','phone','email','addr'];
+  var html='';
+  for(var fi=0;fi<fields.length;fi++){
+    var f=fields[fi];var selIdx=-1;
+    for(var hi=0;hi<exHeaders.length;hi++){if(exDetect(exHeaders[hi])===f){selIdx=hi;break;}}
+    var opts='<option value="-1">— لا يوجد —</option>';
+    for(var hi=0;hi<exHeaders.length;hi++){opts+='<option value="'+hi+'"'+(hi===selIdx?' selected':'')+'>'+(exHeaders[hi]||'عمود '+(hi+1))+'</option>';}
+    html+='<div class="fg"><label style="font-size:11px;color:#64748b;display:block;margin-bottom:3px">'+FLABELS[f]+'</label><select class="fc" id="xm_'+f+'">'+opts+'</select></div>';
+  }
+  document.getElementById('exMapping').innerHTML=html;
+}
+function exBuildPreview(){
+  var th='<tr>'+exHeaders.map(function(h){return'<th style="background:var(--n);color:#fff;padding:5px 7px;text-align:right">'+h+'</th>';}).join('')+'</tr>';
+  var trs=exData.slice(0,5).map(function(r){return'<tr>'+r.map(function(c){return'<td style="padding:4px 7px;border-bottom:1px solid #eee;font-size:10px">'+String(c||'')+'</td>';}).join('')+'</tr>';}).join('');
+  document.getElementById('exPreview').innerHTML=th+trs;
+}
+function exImport(){
+  function gc(f){var el=document.getElementById('xm_'+f);return el?parseInt(el.value):-1;}
+  var fnC=gc('fn'),lnC=gc('ln');
+  if(fnC<0&&lnC<0){toast('⚠️ حدد عمود الاسم أو اللقب','#F59E0B');return;}
+  var added=0,skipped=0;
+  var maxId=students.length?Math.max.apply(null,students.map(function(s){return s.id;})):0;
+  for(var i=0;i<exData.length;i++){
+    var row=exData[i];
+    function gv(col){return col>=0&&col<row.length?String(row[col]||'').trim():'';}
+    var fn=gv(fnC),ln=gv(lnC);
+    if(!fn&&!ln){skipped++;continue;}
+    students.push({id:maxId+added+1,fn:fn||'—',ln:ln||'—',nin:gv(gc('nin'))||('N'+i),reg:gv(gc('reg'))||('R'+(maxId+added+1)),level:gv(gc('level'))||'1م',cls:gv(gc('cls'))||'أ',guardian:gv(gc('guardian'))||'—',phone:gv(gc('phone'))||'—',email:gv(gc('email'))||'',addr:gv(gc('addr'))||'',absStart:null,absDays:0,photo:null,fingerId:null});
+    added++;
+  }
+  saveStudents();
+  document.getElementById('exStep2').style.display='none';document.getElementById('exStep3').style.display='block';
+  document.getElementById('exResult').textContent='تم استيراد '+added+' طالب بنجاح!';
+  document.getElementById('exDetails').innerHTML=(skipped?'تجاوز '+skipped+' صف فارغ — ':'')+' الإجمالي: <strong>'+students.length+'</strong> طالب';
+  updateHdrStats();toast('✅ تم استيراد '+added+' طالب');
+}
+
+// ══ INIT ═════════════════════════════════════════
+if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(function(){});}
+
+// ══ EXCEL IMPORT ══
+let excelData=[],excelHeaders=[];
+const FIELD_MAP={
+  fn:['الاسم','اسم','prenom','prénom','firstname','nom'],
+  ln:['اللقب','لقب','lastname','family'],
+  nin:['nin','رقم التعريفي','رقم تعريفي','national'],
+  reg:['رقم التسجيل','matricule','registration'],
+  level:['المستوى','مستوى','niveau','level'],
+  cls:['القسم','قسم','classe','section'],
+  guardian:['الولي','tuteur','parent','wali'],
+  phone:['الهاتف','telephone','phone','tel'],
+  email:['البريد','email','mail'],
+  addr:['العنوان','adresse','address'],
+};
+const FIELD_LABELS={fn:'الاسم',ln:'اللقب',nin:'NIN',reg:'رقم التسجيل',
+  level:'المستوى',cls:'القسم',guardian:'الولي',phone:'الهاتف',
+  email:'البريد',addr:'العنوان'};
+
+function openExcelImport(){document.getElementById('excelModal').style.display='flex';}
+function closeExcelModal(){document.getElementById('excelModal').style.display='none';resetExcelImport();}
+function resetExcelImport(){
+  ['excelStep1','excelStep2','excelStep3'].forEach(function(id,i){
+    document.getElementById(id).style.display=i===0?'block':'none';
+  });
+  document.getElementById('excelFile').value='';
+  excelData=[];excelHeaders=[];
+}
+
+function handleExcelDrop(e){e.preventDefault();var f=e.dataTransfer.files[0];if(f)processExcelFile(f);}
+function handleExcelFile(e){var f=e.target.files[0];if(f)processExcelFile(f);}
+
+function processExcelFile(file){
+  if(typeof XLSX==='undefined'){toast('⚠️ جارٍ تحميل مكتبة Excel...','#F59E0B');
+    setTimeout(function(){processExcelFile(file);},1500);return;}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var data=new Uint8Array(e.target.result);
+      var wb=XLSX.read(data,{type:'array'});
+      var ws=wb.Sheets[wb.SheetNames[0]];
+      var rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+      if(!rows||rows.length<2){toast('⚠️ الملف فارغ','#F59E0B');return;}
+      var hi=0;
+      for(var i=0;i<Math.min(5,rows.length);i++){if(rows[i].some(function(c){return c&&String(c).trim();})){hi=i;break;}}
+      excelHeaders=rows[hi].map(function(h){return String(h||'').trim();});
+      excelData=rows.slice(hi+1).filter(function(r){return r.some(function(c){return c&&String(c).trim();});});
+      document.getElementById('excelFileInfo').textContent=
+        file.name+' — '+excelData.length+' طالب · '+excelHeaders.length+' عمود';
+      buildColMapping();buildPreview();
+      document.getElementById('excelStep1').style.display='none';
+      document.getElementById('excelStep2').style.display='block';
+    }catch(err){toast('❌ خطأ: '+err.message,'#E8192C');}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function autoDetectCol(header){
+  var h=String(header).toLowerCase().replace(/[_\s]/g,'');
+  for(var field in FIELD_MAP){
+    var patterns=FIELD_MAP[field];
+    for(var i=0;i<patterns.length;i++){
+      var p=patterns[i].toLowerCase().replace(/[_\s]/g,'');
+      if(h.indexOf(p)>=0||p.indexOf(h)>=0)return field;
+    }
+  }
+  return '';
+}
+
+function buildColMapping(){
+  var fields=['fn','ln','nin','reg','level','cls','guardian','phone','email','addr'];
+  var req=['fn','ln'];
+  var html='';
+  for(var i=0;i<fields.length;i++){
+    var f=fields[i];
+    var detected=excelHeaders.findIndex(function(h){return autoDetectCol(h)===f;});
+    var opts='<option value="-1">— لا يوجد —</option>';
+    for(var j=0;j<excelHeaders.length;j++){
+      opts+='<option value="'+j+'"'+(j===detected?' selected':'')+'>'+excelHeaders[j]+'</option>';
+    }
+    var req_star=req.indexOf(f)>=0?' <span style="color:red">*</span>':'';
+    html+='<div class="fg"><label>'+FIELD_LABELS[f]+req_star+'</label>'+
+          '<select class="fc" id="map_'+f+'">'+opts+'</select></div>';
+  }
+  document.getElementById('colMapping').innerHTML=html;
+}
+
+function buildPreview(){
+  var preview=excelData.slice(0,5);
+  var th='<tr>'+excelHeaders.map(function(h){
+    return '<th style="background:#0D1F3C;color:#fff;padding:6px 8px;font-size:10px">'+h+'</th>';
+  }).join('')+'</tr>';
+  var rows=preview.map(function(r){
+    return '<tr>'+r.map(function(c){
+      return '<td style="padding:5px 8px;border-bottom:1px solid #eee;font-size:10px">'+String(c||'')+'</td>';
+    }).join('')+'</tr>';
+  }).join('');
+  document.getElementById('previewTable').innerHTML=th+rows;
+}
+
+function doImport(){
+  function getCol(f){var el=document.getElementById('map_'+f);return el?parseInt(el.value):-1;}
+  var fnCol=getCol('fn'),lnCol=getCol('ln');
+  if(fnCol<0&&lnCol<0){toast('⚠️ حدد عمود الاسم أو اللقب','#F59E0B');return;}
+  var added=0,skipped=0;
+  var maxId=students.length?Math.max.apply(null,students.map(function(s){return s.id;})):0;
+  excelData.forEach(function(row,idx){
+    try{
+      function g(col){return col>=0&&col<row.length?String(row[col]||'').trim():'';}
+      var fn=g(fnCol),ln=g(lnCol);
+      if(!fn&&!ln){skipped++;return;}
+      students.push({
+        id:maxId+added+1,fn:fn||'—',ln:ln||'—',
+        nin:g(getCol('nin'))||'NIN'+(maxId+added+1),
+        reg:g(getCol('reg'))||'IMP'+(maxId+added+1),
+        level:g(getCol('level'))||'1م',cls:g(getCol('cls'))||'أ',
+        guardian:g(getCol('guardian'))||'—',phone:g(getCol('phone'))||'—',
+        email:g(getCol('email'))||'',addr:g(getCol('addr'))||'',
+        absStart:null,absDays:0,photo:null,fingerId:null
+      });
+      added++;
+    }catch(e){}
+  });
+  saveStudents();
+  document.getElementById('excelStep2').style.display='none';
+  document.getElementById('excelStep3').style.display='block';
+  document.getElementById('importResult').textContent='تم استيراد '+added+' طالب بنجاح!';
+  document.getElementById('importDetails').innerHTML=
+    '<span style="color:#16a34a">إجمالي الطلاب: '+students.length+'</span>'+(skipped?' · تجاوز: '+skipped+' فارغ':'');
+  updateHdrStats();
+  toast('✅ تم استيراد '+added+' طالب من Excel');
+}
+// ══ END EXCEL ══
+
+window.onload=function(){
+  loadStudents();
   updateClock();setInterval(updateClock,1000);
   if('BarcodeDetector' in window)barcodeDetector=new BarcodeDetector({formats:['qr_code']});
-  currentLicense={plan:'enterprise',expiry:'2099-12-31',maxStudents:9999,version:4};
   go('dashboard');
 };
 </script>
