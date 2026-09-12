@@ -845,7 +845,9 @@ function renderStudents(){
   <div class="shdr">
     <div class="stitle">👥 قاعدة بيانات الطلاب</div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn bn bo" onclick="exportStudents()">📥 تصدير Excel</button>
+      <button class="btn bn bo" onclick="exportStudents()">📥 تصدير</button>
+      <button class="btn" style="background:linear-gradient(135deg,#C8A84B,#a8882b);color:#0D1F3C;font-weight:700;border:none" onclick="openXL()">📊 استيراد Excel</button>
+      <button class="btn" style="background:linear-gradient(135deg,#0D1F3C,#1a3a6c);color:#fff;font-weight:700;border:none" onclick="openSIGP()">🏫 استيراد SIGP</button>
       <button class="btn bg" onclick="openStuModal()">➕ إضافة طالب</button>
     </div>
   </div>
